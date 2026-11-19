@@ -1,0 +1,22 @@
+# Reproducible 3-Seed OpenLSR-X Baseline Configuration (Task T1)
+task: "t1"
+track: "2x"
+lr_scan_id: "169067"
+hr_scan_id: "169066"
+splits_file: "splits/benchmark_splits_v1.json"
+registration_transform: "outputs/stage0_i13/transform_169067_to_169066.json"
+seeds: [42, 137, 2025]
+backbones:
+  - "edsr3d"
+  - "rcan3d"
+  - "swinir3d"
+training:
+  patch_size_hr: [64, 64, 64]
+  batch_size: 4
+  epochs: 100
+  loss: "l1"
+  optimizer: "adamw"
+  learning_rate: 1.0e-4
+evaluation:
+  cupping_normalization: true
+  frozen_threshold_transport: true

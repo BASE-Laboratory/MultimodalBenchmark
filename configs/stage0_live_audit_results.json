@@ -1,0 +1,772 @@
+{
+  "stage0a_xrdct_sinograms": {
+    "scans_25um": {
+      "43322": {
+        "sinogram_shape_qat": [
+          2295,
+          79,
+          40
+        ],
+        "angles_min_max_deg": [
+          0.0,
+          355.443
+        ],
+        "conjugate_cor_px": 19.193,
+        "nominal_cor_px": 20.0,
+        "cor_offset_px": -0.807,
+        "cor_offset_um": -20.17,
+        "conjugate_self_absorption_asymmetry": 0.0957,
+        "total_odd_even_frc_0p5_cyc_px": 0.2613,
+        "na_odd_even_frc_0p5_cyc_px": 0.4091,
+        "zn_odd_even_frc_0p5_cyc_px": 0.429,
+        "zn_effective_res_um_at_frc0p5": 58.27,
+        "nnls_na_zn_spatial_corr": -0.0591,
+        "motors": {
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/gts_cs_theta": {
+            "shape": [
+              79
+            ],
+            "min": 0.0,
+            "max": 355.443,
+            "mean": 177.7215
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_x": {
+            "shape": [
+              40
+            ],
+            "min": 377.7224,
+            "max": 2183.278,
+            "mean": 1280.5002
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_y": 1080.0,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_x": -4.193927600998478,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_y": 0.9737984275594904,
+          "processed/intermediate/4-Export to Text File/gts_cs_theta": {
+            "shape": [
+              79
+            ],
+            "min": 0.0,
+            "max": 355.443,
+            "mean": 177.7215
+          },
+          "processed/intermediate/4-Export to Text File/kb_cs_x": {
+            "shape": [
+              40
+            ],
+            "min": 377.7224,
+            "max": 2183.278,
+            "mean": 1280.5002
+          },
+          "processed/intermediate/4-Export to Text File/kb_cs_y": 1080.0,
+          "processed/intermediate/4-Export to Text File/kb_x": -4.193927600998478,
+          "processed/intermediate/4-Export to Text File/kb_y": 0.9737984275594904,
+          "processed/result/gts_cs_theta": {
+            "shape": [
+              79
+            ],
+            "min": 0.0,
+            "max": 355.443,
+            "mean": 177.7215
+          },
+          "processed/result/kb_cs_x": {
+            "shape": [
+              40
+            ],
+            "min": 377.7224,
+            "max": 2183.278,
+            "mean": 1280.5002
+          },
+          "processed/result/kb_cs_y": 1080.0,
+          "processed/result/kb_x": -4.193927600998478,
+          "processed/result/kb_y": 0.9737984275594904
+        }
+      },
+      "43323": {
+        "sinogram_shape_qat": [
+          2295,
+          80,
+          40
+        ],
+        "angles_min_max_deg": [
+          0.0,
+          360.0
+        ],
+        "conjugate_cor_px": 19.3583,
+        "nominal_cor_px": 20.0,
+        "cor_offset_px": -0.6417,
+        "cor_offset_um": -16.04,
+        "conjugate_self_absorption_asymmetry": 0.0942,
+        "total_odd_even_frc_0p5_cyc_px": 0.5,
+        "na_odd_even_frc_0p5_cyc_px": 0.3364,
+        "zn_odd_even_frc_0p5_cyc_px": 0.4442,
+        "zn_effective_res_um_at_frc0p5": 56.28,
+        "nnls_na_zn_spatial_corr": -0.1101,
+        "motors": {
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/gts_cs_theta": {
+            "shape": [
+              80
+            ],
+            "min": 0.0,
+            "max": 360.0,
+            "mean": 180.0
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_x": {
+            "shape": [
+              40
+            ],
+            "min": 377.7224,
+            "max": 2183.278,
+            "mean": 1280.5002
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_y": 1080.0,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_x": -4.267939551521195,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_y": 0.9737835314636356,
+          "processed/intermediate/4-Export to Text File/gts_cs_theta": {
+            "shape": [
+              80
+            ],
+            "min": 0.0,
+            "max": 360.0,
+            "mean": 180.0
+          },
+          "processed/intermediate/4-Export to Text File/kb_cs_x": {
+            "shape": [
+              40
+            ],
+            "min": 377.7224,
+            "max": 2183.278,
+            "mean": 1280.5002
+          },
+          "processed/intermediate/4-Export to Text File/kb_cs_y": 1080.0,
+          "processed/intermediate/4-Export to Text File/kb_x": -4.267939551521195,
+          "processed/intermediate/4-Export to Text File/kb_y": 0.9756534678469373,
+          "processed/result/gts_cs_theta": {
+            "shape": [
+              80
+            ],
+            "min": 0.0,
+            "max": 360.0,
+            "mean": 180.0
+          },
+          "processed/result/kb_cs_x": {
+            "shape": [
+              40
+            ],
+            "min": 377.7224,
+            "max": 2183.278,
+            "mean": 1280.5002
+          },
+          "processed/result/kb_cs_y": 1080.0,
+          "processed/result/kb_x": -4.3420225798383205,
+          "processed/result/kb_y": 0.977511741079504
+        }
+      },
+      "43324": {
+        "sinogram_shape_qat": [
+          2295,
+          80,
+          40
+        ],
+        "angles_min_max_deg": [
+          0.0,
+          360.0
+        ],
+        "conjugate_cor_px": 18.8716,
+        "nominal_cor_px": 20.0,
+        "cor_offset_px": -1.1284,
+        "cor_offset_um": -28.21,
+        "conjugate_self_absorption_asymmetry": 0.069,
+        "total_odd_even_frc_0p5_cyc_px": 0.5,
+        "na_odd_even_frc_0p5_cyc_px": 0.4397,
+        "zn_odd_even_frc_0p5_cyc_px": 0.4398,
+        "zn_effective_res_um_at_frc0p5": 56.85,
+        "nnls_na_zn_spatial_corr": 0.5922,
+        "motors": {
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/gts_cs_theta": {
+            "shape": [
+              80
+            ],
+            "min": 0.0,
+            "max": 360.0,
+            "mean": 180.0
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_x": {
+            "shape": [
+              40
+            ],
+            "min": 377.7224,
+            "max": 2183.278,
+            "mean": 1280.5002
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_y": 1080.0,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_x": -4.193859931655281,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_y": 0.9737823255750195,
+          "processed/intermediate/4-Export to Text File/gts_cs_theta": {
+            "shape": [
+              80
+            ],
+            "min": 0.0,
+            "max": 360.0,
+            "mean": 180.0
+          },
+          "processed/intermediate/4-Export to Text File/kb_cs_x": {
+            "shape": [
+              40
+            ],
+            "min": 377.7224,
+            "max": 2183.278,
+            "mean": 1280.5002
+          },
+          "processed/intermediate/4-Export to Text File/kb_cs_y": 1080.0,
+          "processed/intermediate/4-Export to Text File/kb_x": -4.366651880422812,
+          "processed/intermediate/4-Export to Text File/kb_y": 0.9737823255750195,
+          "processed/result/gts_cs_theta": {
+            "shape": [
+              80
+            ],
+            "min": 0.0,
+            "max": 360.0,
+            "mean": 180.0
+          },
+          "processed/result/kb_cs_x": {
+            "shape": [
+              40
+            ],
+            "min": 377.7224,
+            "max": 2183.278,
+            "mean": 1280.5002
+          },
+          "processed/result/kb_cs_y": 1080.0,
+          "processed/result/kb_x": -4.267944204594752,
+          "processed/result/kb_y": 0.9756536106123432
+        }
+      },
+      "43325": {
+        "sinogram_shape_qat": [
+          2295,
+          80,
+          40
+        ],
+        "angles_min_max_deg": [
+          0.0,
+          360.0
+        ],
+        "conjugate_cor_px": 19.2682,
+        "nominal_cor_px": 20.0,
+        "cor_offset_px": -0.7318,
+        "cor_offset_um": -18.3,
+        "conjugate_self_absorption_asymmetry": 0.093,
+        "total_odd_even_frc_0p5_cyc_px": 0.5,
+        "na_odd_even_frc_0p5_cyc_px": 0.3804,
+        "zn_odd_even_frc_0p5_cyc_px": 0.3258,
+        "zn_effective_res_um_at_frc0p5": 76.74,
+        "nnls_na_zn_spatial_corr": -0.1703,
+        "motors": {
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/gts_cs_theta": {
+            "shape": [
+              80
+            ],
+            "min": 0.0,
+            "max": 360.0,
+            "mean": 180.0
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_x": {
+            "shape": [
+              40
+            ],
+            "min": 377.7224,
+            "max": 2183.278,
+            "mean": 1280.5002
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_y": 1080.0,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_x": -4.292673430664034,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_y": 0.9762726941387644,
+          "processed/intermediate/4-Export to Text File/gts_cs_theta": {
+            "shape": [
+              80
+            ],
+            "min": 0.0,
+            "max": 360.0,
+            "mean": 180.0
+          },
+          "processed/intermediate/4-Export to Text File/kb_cs_x": {
+            "shape": [
+              40
+            ],
+            "min": 377.7224,
+            "max": 2183.278,
+            "mean": 1280.5002
+          },
+          "processed/intermediate/4-Export to Text File/kb_cs_y": 1080.0,
+          "processed/intermediate/4-Export to Text File/kb_x": -4.292673430664034,
+          "processed/intermediate/4-Export to Text File/kb_y": 0.9762726941387644,
+          "processed/result/gts_cs_theta": {
+            "shape": [
+              80
+            ],
+            "min": 0.0,
+            "max": 360.0,
+            "mean": 180.0
+          },
+          "processed/result/kb_cs_x": {
+            "shape": [
+              40
+            ],
+            "min": 377.7224,
+            "max": 2183.278,
+            "mean": 1280.5002
+          },
+          "processed/result/kb_cs_y": 1080.0,
+          "processed/result/kb_x": -4.292673430664034,
+          "processed/result/kb_y": 0.9762726941387644
+        }
+      }
+    },
+    "scans_50um_sample": {
+      "43336": {
+        "sinogram_shape_qat": [
+          2295,
+          40,
+          20
+        ],
+        "angles_min_max_deg": [
+          -47.5,
+          312.5
+        ],
+        "conjugate_cor_px": 13.1043,
+        "cor_offset_px": 3.1043,
+        "cor_offset_um": 155.21,
+        "conjugate_asymmetry": 0.0553,
+        "motors": {
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/gts_cs_theta": {
+            "shape": [
+              40
+            ],
+            "min": -47.5,
+            "max": 312.5,
+            "mean": 132.5
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_x": {
+            "shape": [
+              20
+            ],
+            "min": 377.7202,
+            "max": 2183.2802,
+            "mean": 1280.5002
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_y": 1080.0,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_x": -4.176716920779367,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_y": 0.9818878654042031,
+          "processed/intermediate/4-Export to Text File/gts_cs_theta": {
+            "shape": [
+              40
+            ],
+            "min": -47.5,
+            "max": 312.5,
+            "mean": 132.5
+          },
+          "processed/intermediate/4-Export to Text File/kb_cs_x": {
+            "shape": [
+              20
+            ],
+            "min": 377.7202,
+            "max": 2183.2802,
+            "mean": 1280.5002
+          },
+          "processed/intermediate/4-Export to Text File/kb_cs_y": 1080.0,
+          "processed/intermediate/4-Export to Text File/kb_x": -4.176716920779367,
+          "processed/intermediate/4-Export to Text File/kb_y": 0.9818878654042031,
+          "processed/result/gts_cs_theta": {
+            "shape": [
+              40
+            ],
+            "min": -47.5,
+            "max": 312.5,
+            "mean": 132.5
+          },
+          "processed/result/kb_cs_x": {
+            "shape": [
+              20
+            ],
+            "min": 377.7202,
+            "max": 2183.2802,
+            "mean": 1280.5002
+          },
+          "processed/result/kb_cs_y": 1080.0,
+          "processed/result/kb_x": -4.176716920779367,
+          "processed/result/kb_y": 0.9818878654042031
+        }
+      },
+      "43345": {
+        "sinogram_shape_qat": [
+          2295,
+          40,
+          20
+        ],
+        "angles_min_max_deg": [
+          -47.5,
+          312.5
+        ],
+        "conjugate_cor_px": 8.9248,
+        "cor_offset_px": -1.0752,
+        "cor_offset_um": -53.76,
+        "conjugate_asymmetry": 0.0656,
+        "motors": {
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/gts_cs_theta": {
+            "shape": [
+              40
+            ],
+            "min": -47.5,
+            "max": 312.5,
+            "mean": 132.5
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_x": {
+            "shape": [
+              20
+            ],
+            "min": 377.7202,
+            "max": 2183.2802,
+            "mean": 1280.5002
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_y": 1080.0,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_x": -4.3289510912832245,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_y": 0.9846313988568403,
+          "processed/intermediate/4-Export to Text File/gts_cs_theta": {
+            "shape": [
+              40
+            ],
+            "min": -47.5,
+            "max": 312.5,
+            "mean": 132.5
+          },
+          "processed/intermediate/4-Export to Text File/kb_cs_x": {
+            "shape": [
+              20
+            ],
+            "min": 377.7202,
+            "max": 2183.2802,
+            "mean": 1280.5002
+          },
+          "processed/intermediate/4-Export to Text File/kb_cs_y": 1080.0,
+          "processed/intermediate/4-Export to Text File/kb_x": -4.3289510912832245,
+          "processed/intermediate/4-Export to Text File/kb_y": 0.9846313988568403,
+          "processed/result/gts_cs_theta": {
+            "shape": [
+              40
+            ],
+            "min": -47.5,
+            "max": 312.5,
+            "mean": 132.5
+          },
+          "processed/result/kb_cs_x": {
+            "shape": [
+              20
+            ],
+            "min": 377.7202,
+            "max": 2183.2802,
+            "mean": 1280.5002
+          },
+          "processed/result/kb_cs_y": 1080.0,
+          "processed/result/kb_x": -4.3289510912832245,
+          "processed/result/kb_y": 0.9846313988568403
+        }
+      },
+      "43393": {
+        "sinogram_shape_qat": [
+          2295,
+          40,
+          20
+        ],
+        "angles_min_max_deg": [
+          -47.5,
+          312.5
+        ],
+        "conjugate_cor_px": 9.1197,
+        "cor_offset_px": -0.8803,
+        "cor_offset_um": -44.01,
+        "conjugate_asymmetry": 0.1715,
+        "motors": {
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/gts_cs_theta": {
+            "shape": [
+              40
+            ],
+            "min": -47.5,
+            "max": 312.5,
+            "mean": 132.5
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_x": {
+            "shape": [
+              20
+            ],
+            "min": 377.7202,
+            "max": 2183.2802,
+            "mean": 1280.5002
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_y": 1080.0,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_x": -4.278250202927305,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_y": 0.9837204826584893,
+          "processed/intermediate/4-Export to Text File/gts_cs_theta": {
+            "shape": [
+              40
+            ],
+            "min": -47.5,
+            "max": 312.5,
+            "mean": 132.5
+          },
+          "processed/intermediate/4-Export to Text File/kb_cs_x": {
+            "shape": [
+              20
+            ],
+            "min": 377.7202,
+            "max": 2183.2802,
+            "mean": 1280.5002
+          },
+          "processed/intermediate/4-Export to Text File/kb_cs_y": 1080.0,
+          "processed/intermediate/4-Export to Text File/kb_x": -4.227544200184826,
+          "processed/intermediate/4-Export to Text File/kb_y": 0.9828095319475133,
+          "processed/result/gts_cs_theta": {
+            "shape": [
+              40
+            ],
+            "min": -47.5,
+            "max": 312.5,
+            "mean": 132.5
+          },
+          "processed/result/kb_cs_x": {
+            "shape": [
+              20
+            ],
+            "min": 377.7202,
+            "max": 2183.2802,
+            "mean": 1280.5002
+          },
+          "processed/result/kb_cs_y": 1080.0,
+          "processed/result/kb_x": -4.227544200184826,
+          "processed/result/kb_y": 0.9828095319475133
+        }
+      },
+      "43401": {
+        "sinogram_shape_qat": [
+          2295,
+          40,
+          20
+        ],
+        "angles_min_max_deg": [
+          -47.5,
+          312.5
+        ],
+        "conjugate_cor_px": 8.3197,
+        "cor_offset_px": -1.6803,
+        "cor_offset_um": -84.02,
+        "conjugate_asymmetry": null,
+        "motors": {
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/gts_cs_theta": {
+            "shape": [
+              40
+            ],
+            "min": -47.5,
+            "max": 312.5,
+            "mean": 132.5
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_x": {
+            "shape": [
+              20
+            ],
+            "min": 377.7202,
+            "max": 2183.2802,
+            "mean": 1280.5002
+          },
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_cs_y": 1080.0,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_x": -4.328945534815714,
+          "processed/intermediate/3-Moving Beam Azimuthal Integration/kb_y": 0.984631216005083,
+          "processed/intermediate/4-Export to Text File/kb_cs_y": 1080.0,
+          "processed/intermediate/4-Export to Text File/kb_y": 0.984631216005083,
+          "processed/result/gts_cs_theta": {
+            "shape": [
+              40
+            ],
+            "min": -47.5,
+            "max": 312.5,
+            "mean": 132.5
+          },
+          "processed/result/kb_cs_x": {
+            "shape": [
+              20
+            ],
+            "min": 377.7202,
+            "max": 2183.2802,
+            "mean": 1280.5002
+          },
+          "processed/result/kb_cs_y": 1080.0,
+          "processed/result/kb_x": -4.328945534815714,
+          "processed/result/kb_y": 0.984631216005083
+        }
+      }
+    },
+    "gts_cs_theta_motor_zero_audit": {
+      "scan_25um_43324_theta_deg": [
+        0.0,
+        360.0
+      ],
+      "scan_50um_43345_theta_deg": [
+        -47.5,
+        312.5
+      ],
+      "soft_motor_zero_offset_deg": -47.5,
+      "frame0_asymmetric_sinogram_pearson_r": 0.99463,
+      "kb_cs_x_center_diad_xct_px": 1280.5,
+      "kb_cs_x_span_um": 975.0
+    }
+  },
+  "stage0b_i13_ladder": {
+    "processed_nxs_cor": {
+      "169068": {
+        "voxel_um": 2.6,
+        "cor_mean_px": 1248.75,
+        "cor_min_max_px": [
+          1248.75,
+          1248.75
+        ]
+      },
+      "169067": {
+        "voxel_um": 1.625,
+        "cor_mean_px": 1178.75,
+        "cor_min_max_px": [
+          1178.75,
+          1178.75
+        ]
+      },
+      "169066": {
+        "voxel_um": 0.8125,
+        "cor_mean_px": 1221.0,
+        "cor_min_max_px": [
+          1221.0,
+          1221.0
+        ]
+      },
+      "169065": {
+        "voxel_um": 0.325,
+        "cor_mean_px": 1265.0,
+        "cor_min_max_px": [
+          1265.0,
+          1265.0
+        ]
+      }
+    },
+    "subvolume_shapes": {
+      "169067": {
+        "dataset": "data",
+        "shape": [
+          500,
+          1000,
+          1000
+        ],
+        "dtype": "uint8"
+      },
+      "169066": {
+        "dataset": "data",
+        "shape": [
+          500,
+          1000,
+          1000
+        ],
+        "dtype": "uint8"
+      }
+    },
+    "t1_2x_live_registration_and_baselines": {
+      "coarse_fft_ncc_peak": 0.9051,
+      "coarse_center_in_169067_zyx_vox": [
+        165,
+        482,
+        526
+      ],
+      "coarse_offset_from_geom_center_zyx_um": [
+        -138.12,
+        -29.25,
+        42.25
+      ],
+      "scale_factor_fitted": 0.98699,
+      "fine_residual_translation_xyz_um": [
+        0.975,
+        -6.572,
+        0.936
+      ],
+      "tre_mean_um": 14.217,
+      "tre_median_um": 12.713,
+      "num_matched_landmarks": 15,
+      "pearson_r_naive_geometric_center": 0.0036,
+      "pearson_r_after_coarse_fft": 0.0112,
+      "pearson_r_after_fine_7dof": 0.4342,
+      "evaluated_hr_cube_shape": [
+        80,
+        80,
+        80
+      ],
+      "classical_baselines": {
+        "Tricubic-3D": {
+          "psnr_db": 20.3163,
+          "ssim": 0.1904,
+          "edge_mtf50_cyc_per_vox": 0.1123,
+          "fsc_0p5_cyc_per_vox": 0.0125,
+          "fsc_0p143_cyc_per_vox": 0.0125,
+          "fsc_auc": 0.286,
+          "fsc_0p5_cyc_per_um": 0.0154,
+          "porosity_pred": 0.3548,
+          "porosity_ref": 0.434,
+          "porosity_abs_err": 0.0792,
+          "d_eff_mean_pred": 0.0928,
+          "d_eff_mean_ref": 0.0878,
+          "d_eff_rel_err": 0.0559,
+          "tortuosity_mean_pred": 3.866,
+          "tortuosity_mean_ref": 4.9524,
+          "tortuosity_rel_err": 0.2194,
+          "ssa_rel_err": 0.5995,
+          "percolates_all_axes_pred": 1.0,
+          "percolates_all_axes_ref": 1.0
+        },
+        "Lanczos-3D": {
+          "psnr_db": 20.3176,
+          "ssim": 0.1911,
+          "edge_mtf50_cyc_per_vox": 0.1121,
+          "fsc_0p5_cyc_per_vox": 0.0125,
+          "fsc_0p143_cyc_per_vox": 0.0125,
+          "fsc_auc": 0.2854,
+          "fsc_0p5_cyc_per_um": 0.0154,
+          "porosity_pred": 0.3549,
+          "porosity_ref": 0.434,
+          "porosity_abs_err": 0.0791,
+          "d_eff_mean_pred": 0.0927,
+          "d_eff_mean_ref": 0.0878,
+          "d_eff_rel_err": 0.0553,
+          "tortuosity_mean_pred": 3.8765,
+          "tortuosity_mean_ref": 4.9524,
+          "tortuosity_rel_err": 0.2172,
+          "ssa_rel_err": 0.5958,
+          "percolates_all_axes_pred": 1.0,
+          "percolates_all_axes_ref": 1.0
+        },
+        "TV-Deconv-3D": {
+          "psnr_db": 20.2909,
+          "ssim": 0.1798,
+          "edge_mtf50_cyc_per_vox": 0.1103,
+          "fsc_0p5_cyc_per_vox": 0.0125,
+          "fsc_0p143_cyc_per_vox": 0.0125,
+          "fsc_auc": 0.2877,
+          "fsc_0p5_cyc_per_um": 0.0154,
+          "porosity_pred": 0.3239,
+          "porosity_ref": 0.434,
+          "porosity_abs_err": 0.1101,
+          "d_eff_mean_pred": 0.0714,
+          "d_eff_mean_ref": 0.0878,
+          "d_eff_rel_err": 0.1869,
+          "tortuosity_mean_pred": 4.4744,
+          "tortuosity_mean_ref": 4.9524,
+          "tortuosity_rel_err": 0.0965,
+          "ssa_rel_err": 0.6877,
+          "percolates_all_axes_pred": 1.0,
+          "percolates_all_axes_ref": 1.0
+        }
+      }
+    }
+  }
+}

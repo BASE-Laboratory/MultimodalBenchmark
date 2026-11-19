@@ -1,0 +1,78 @@
+# Formal Benchmark Task Specifications (v2.0)
+
+tasks:
+  t1:
+    name: "T1: Multi-Magnification Synchrotron XCT Super-Resolution"
+    beamline: "DLS I13-2"
+    input_modality: "3D XCT (float32)"
+    target_modality: "3D XCT (float32)"
+    tracks:
+      2x:
+        lr_scan: "169067"
+        lr_voxel_um: 1.625
+        hr_scan: "169066"
+        hr_voxel_um: 0.8125
+        scale_factor: 2.0
+      2p5x:
+        lr_scan: "169066"
+        lr_voxel_um: 0.8125
+        hr_scan: "169065"
+        hr_voxel_um: 0.325
+        scale_factor: 2.5
+      5x:
+        lr_scan: "169067"
+        lr_voxel_um: 1.625
+        hr_scan: "169065"
+        hr_voxel_um: 0.325
+        scale_factor: 5.0
+      8x:
+        lr_scan: "169068"
+        lr_voxel_um: 2.6
+        hr_scan: "169065"
+        hr_voxel_um: 0.325
+        scale_factor: 8.0
+    required_keys: ["pred"]
+    primary_metrics: ["psnr_db", "ssim", "fsc_0p5_cyc_per_vox", "d_eff_rel_err", "tortuosity_rel_err"]
+
+  t2:
+    name: "T2: Cross-Beamline Synchrotron XCT Super-Resolution"
+    beamline: "DLS I13-2 -> DLS K11 (DIAD)"
+    gated_on_stage0c: true
+    stage0c_max_tre_um: 1.0
+    lr_scan: "169067"
+    lr_voxel_um: 1.625
+    hr_scan: "k11-43334"
+    hr_voxel_um: 0.54
+    scale_factor: 3.009259
+    required_keys: ["pred"]
+    primary_metrics: ["psnr_db", "ssim", "fsc_0p5_cyc_per_vox", "d_eff_rel_err", "tortuosity_rel_err"]
+
+  t3:
+    name: "T3: Correlative Multimodal Chemical Super-Resolution / Fusion"
+    beamline: "DLS K11 (DIAD)"
+    input_modalities: ["0.54 um DIAD XCT", "50 um DIAD XRD-CT (Zn-13X & Na-13X)"]
+    target_modality: "25 um DIAD XRD-CT ROI Slices (Zn-13X & Na-13X)"
+    held_out_test_scans_25um: [43322, 43323, 43324, 43325]
+    axial_z_guard_band_um: 100.0
+    required_keys: ["zn", "na"]
+    primary_metrics: ["mean_reduced_chi2", "mean_rmse", "mean_pearson_r", "mean_ssim", "t3b_pore_leakage_rel"]
+
+  t4a:
+    name: "T4a: Structural 3-Phase XCT Segmentation"
+    classes:
+      0: "Pore"
+      1: "Pellet_Solid"
+      2: "Calibration_Bead"
+    required_keys: ["labels"]
+    primary_metrics: ["macro_dice", "boundary_f1_tol1", "mean_phase_fraction_mae", "d_eff_rel_err"]
+
+  t4b:
+    name: "T4b: XRD-Validated Chemical Tri-Phase Segmentation"
+    gated_on_cnr: true
+    min_recommended_cnr: 1.5
+    classes:
+      0: "Pore"
+      1: "Na-13X"
+      2: "Zn-13X"
+    required_keys: ["labels"]
+    primary_metrics: ["macro_dice", "dice_na_13x", "dice_zn_13x", "boundary_f1_tol1", "mean_phase_fraction_mae"]
