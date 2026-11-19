@@ -23,6 +23,8 @@ MultimodalBenchmark/
 │   ├── diad_correlative.py        # Astra/TomoPy chirality check & 3D PSF XCT<->XRD-CT alignment
 │   ├── i13_ladder.py              # Multi-scale 7-DOF I13-2 ladder registration & TRE
 │   └── cross_beamline_audit.py    # Fiducial-vs-pellet slip/octant audit & region gating YAML
+├── preprocessing/                 # Conservative ("do-no-harm") artifact cleanup & spatial z-gating
+│   └── artifact_cleanup.py        # Edge-protected polar de-ringing, 7-term cupping detrend & ruby z-mask
 ├── tasks/                         # Task loaders, contracts & submission validators
 ├── splits/                        # Leakage-free 3D train/val/test split generator (guard-banded)
 ├── baselines/                     # Classical (Bicubic, JBU, Guided-TV, CNMF, Otsu) & learned runners

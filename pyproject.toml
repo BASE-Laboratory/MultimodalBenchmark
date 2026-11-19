@@ -64,7 +64,7 @@ mmbench-splits = "multimodal_benchmark.cli:main_splits"
 
 [tool.setuptools.packages.find]
 where = ["src", "."]
-include = ["multimodal_benchmark*", "registration*", "tasks*", "splits*", "baselines*"]
+include = ["multimodal_benchmark*", "registration*", "preprocessing*", "tasks*", "splits*", "baselines*"]
 
 [tool.pytest.ini_options]
 pythonpath = [".", "src"]

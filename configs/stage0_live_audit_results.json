@@ -1641,5 +1641,159 @@
         ]
       }
     }
+  },
+  "stage0_conservative_artifact_cleanup_audit": {
+    "per_scan_dering_metrics": {
+      "169068": {
+        "ring_center_yx": [
+          507.0,
+          496.0
+        ],
+        "ring_rms_removed": 0.3146,
+        "ring_anova_r2_before": 0.001356,
+        "ring_anova_r2_after": 0.001274,
+        "ring_variance_reduction_pct": 6.09,
+        "edge_sharpness_retention_ratio": 0.9968,
+        "background_std_before": 4.4646,
+        "background_std_after": 4.4657
+      },
+      "169067": {
+        "ring_center_yx": [
+          504.0,
+          502.0
+        ],
+        "ring_rms_removed": 0.3834,
+        "ring_anova_r2_before": 0.002988,
+        "ring_anova_r2_after": 0.001841,
+        "ring_variance_reduction_pct": 38.4,
+        "edge_sharpness_retention_ratio": 0.9991,
+        "background_std_before": 2.7264,
+        "background_std_after": 2.7302
+      },
+      "169066": {
+        "ring_center_yx": [
+          553.5,
+          454.0
+        ],
+        "ring_rms_removed": 0.6053,
+        "ring_anova_r2_before": 0.009928,
+        "ring_anova_r2_after": 0.00582,
+        "ring_variance_reduction_pct": 41.37,
+        "edge_sharpness_retention_ratio": 1.0001,
+        "background_std_before": 5.8865,
+        "background_std_after": 5.8905
+      },
+      "169065": {
+        "ring_center_yx": [
+          713.0,
+          -150.5
+        ],
+        "ring_rms_removed": 0.345,
+        "ring_anova_r2_before": 0.031904,
+        "ring_anova_r2_after": 0.028607,
+        "ring_variance_reduction_pct": 10.33,
+        "edge_sharpness_retention_ratio": 0.9991,
+        "background_std_before": 4.8583,
+        "background_std_after": 4.8497
+      }
+    },
+    "sequential_step_metrics": {
+      "fig6a_polar_anatomy": {
+        "conservative_report": {
+          "ring_center_yx": [
+            553.5,
+            454.0
+          ],
+          "ring_rms_removed": 0.5228,
+          "ring_anova_r2_before": 0.009928,
+          "ring_anova_r2_after": 0.005857,
+          "ring_variance_reduction_pct": 41.0,
+          "edge_sharpness_retention_ratio": 0.9996,
+          "background_std_before": 5.8865,
+          "background_std_after": 5.8882
+        },
+        "naive_unmasked_edge_retention": 0.9981,
+        "naive_ruby_rim_leak_rms_gray": 0.48,
+        "conservative_ruby_rim_leak_rms_gray": 0.7919
+      },
+      "fig6b_169065_pipeline": {
+        "step1_dering_report": {
+          "ring_center_yx": [
+            713.0,
+            -150.5
+          ],
+          "ring_rms_removed": 0.3586,
+          "ring_anova_r2_before": 0.035801,
+          "ring_anova_r2_after": 0.031089,
+          "ring_variance_reduction_pct": 13.16,
+          "edge_sharpness_retention_ratio": 0.9988,
+          "background_std_before": 4.9449,
+          "background_std_after": 4.9336
+        },
+        "radial_cupping_span_before_gray": 1.855,
+        "radial_cupping_span_after_gray": 1.546,
+        "cupping_induced_pore_flip_pct": 2.68,
+        "fringe_guard_alpha0p20_flip_pct": 3.026,
+        "fringe_guard_alpha0p50_flip_pct": 4.861
+      },
+      "fig6c_ruby_and_xrdct": {
+        "169067_clean_z_cutoff_vox": 300,
+        "169067_ruby_pole_tangent_streak_ptp_gray": 1.845,
+        "eroded_pellet_axial_spans_gray": {
+          "169068": 9.139,
+          "169067": 3.242,
+          "169066": 2.298,
+          "169065": 0.448
+        },
+        "43323_360_duplicate_streak_max_pct_of_peak": 1.52,
+        "43323_cor_shift_rim_max_pct_of_peak": 7.83
+      }
+    },
+    "openimpala_169066_bullseye_sensitivity": {
+      "raw_otsu": {
+        "porosity": 0.49340029116030093,
+        "percolates_all_axes": 1.0,
+        "percolates_any_axis": 1.0,
+        "d_eff_x": 0.11377644024394913,
+        "d_eff_y": 0.1326069731978257,
+        "d_eff_z": 0.15429493883177728,
+        "d_eff_mean": 0.1335594507578507,
+        "tortuosity_x": 4.269590501796216,
+        "tortuosity_y": 3.6632976145911695,
+        "tortuosity_z": 3.1483781144848746,
+        "tortuosity_mean": 3.6937554102907533,
+        "ssa_inv_m": 1416870.2109304885
+      },
+      "after_conservative_dering": {
+        "porosity": 0.4883558485243056,
+        "percolates_all_axes": 1.0,
+        "percolates_any_axis": 1.0,
+        "d_eff_x": 0.10850953904299486,
+        "d_eff_y": 0.1279412375911449,
+        "d_eff_z": 0.14856310633628342,
+        "d_eff_mean": 0.12833796099014105,
+        "tortuosity_x": 4.426498321034519,
+        "tortuosity_y": 3.754202330955802,
+        "tortuosity_z": 3.233085954078081,
+        "tortuosity_mean": 3.804595535356134,
+        "ssa_inv_m": 1422318.316239672
+      },
+      "after_dering_plus_fringe_guard_alpha0p5": {
+        "porosity": 0.45947265625,
+        "percolates_all_axes": 1.0,
+        "percolates_any_axis": 1.0,
+        "d_eff_x": 0.12028143304923351,
+        "d_eff_y": 0.14549751790566304,
+        "d_eff_z": 0.16639346425565898,
+        "d_eff_mean": 0.14405747173685185,
+        "tortuosity_x": 3.7921742714599365,
+        "tortuosity_y": 3.1349548934530715,
+        "tortuosity_z": 2.7412624515275783,
+        "tortuosity_mean": 3.222797205480196,
+        "ssa_inv_m": 907419.4223220028
+      },
+      "voxel_disagreement_raw_vs_derung_pct": 2.844,
+      "voxel_disagreement_derung_vs_fringe_guard_pct": 16.616
+    }
   }
 }
