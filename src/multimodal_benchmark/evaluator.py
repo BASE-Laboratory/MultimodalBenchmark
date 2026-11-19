@@ -142,6 +142,7 @@ def evaluate_bundles(
     return {
         "task": spec.task_id,
         "task_name": spec.name,
+        "reference_track": str(ref_bundle.get("track", spec.primary_reference_track)),
         "method": method_name,
         "primary_metrics": list(spec.primary_metrics),
         "metrics": {k: float(v) for k, v in metrics.items()},

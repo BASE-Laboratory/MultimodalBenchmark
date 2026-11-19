@@ -28,11 +28,33 @@ def compute_noise_normalized_chi2(
     return float(np.mean(ratio))
 
 
+def lowpass_2d_to_resolution_cutoff(
+    img_2d: np.ndarray,
+    cutoff_cyc_per_px: float = 0.43,
+    rolloff_cyc_per_px: float = 0.05,
+) -> np.ndarray:
+    """Band-limit a 2D map to the measured XRD-CT reference resolution cutoff via a raised-cosine Fourier filter."""
+    arr = np.asarray(img_2d, dtype=np.float64)
+    ny, nx = arr.shape
+    fy = np.fft.fftfreq(ny)[:, None]
+    fx = np.fft.fftfreq(nx)[None, :]
+    kr = np.hypot(fy, fx)
+
+    k0 = max(0.05, float(cutoff_cyc_per_px) - 0.5 * float(rolloff_cyc_per_px))
+    k1 = float(cutoff_cyc_per_px) + 0.5 * float(rolloff_cyc_per_px)
+    filt = np.ones_like(kr, dtype=np.float64)
+    trans = (kr > k0) & (kr < k1)
+    filt[trans] = 0.5 * (1.0 + np.cos(np.pi * (kr[trans] - k0) / max(k1 - k0, 1e-6)))
+    filt[kr >= k1] = 0.0
+    return np.real(np.fft.ifft2(np.fft.fft2(arr) * filt)).astype(np.float64)
+
+
 def _channel_25um_metrics(
     pred_2d: np.ndarray,
     ref_2d: np.ndarray,
     sigma2_2d: Optional[np.ndarray] = None,
     prefix: str = "",
+    cutoff_cyc_per_px: float = 0.43,
 ) -> Dict[str, float]:
     p = np.asarray(pred_2d, dtype=np.float64)
     r = np.asarray(ref_2d, dtype=np.float64)
@@ -42,13 +64,30 @@ def _channel_25um_metrics(
     win = min(7, min(r.shape) if min(r.shape) % 2 == 1 else min(r.shape) - 1)
     ssim_val = float(structural_similarity(r, p, data_range=dyn, win_size=max(3, win)))
 
+    # Band-limited evaluation up to measured 25 um XRD-CT resolution limit (~58 um at SB-FRC 0.5 / 1/2-bit -> 0.43 cyc/px)
+    p_bl = lowpass_2d_to_resolution_cutoff(p, cutoff_cyc_per_px=cutoff_cyc_per_px)
+    r_bl = lowpass_2d_to_resolution_cutoff(r, cutoff_cyc_per_px=cutoff_cyc_per_px)
+    bl_rmse = float(np.sqrt(np.mean((p_bl - r_bl) ** 2)))
+    bl_pearson = (
+        float(np.corrcoef(p_bl.ravel(), r_bl.ravel())[0, 1])
+        if (np.std(p_bl) > 1e-12 and np.std(r_bl) > 1e-12)
+        else 0.0
+    )
+
     out = {
         f"{prefix}rmse": rmse,
         f"{prefix}pearson_r": pearson_r,
         f"{prefix}ssim": ssim_val,
+        f"{prefix}bandlimited_rmse": bl_rmse,
+        f"{prefix}bandlimited_pearson_r": bl_pearson,
     }
     if sigma2_2d is not None:
         out[f"{prefix}reduced_chi2"] = compute_noise_normalized_chi2(p, r, sigma2_2d)
+        # Scale pixelwise variance by retained Fourier power fraction pi * k_cut^2 / 1.0 (~0.58)
+        bw_frac = min(1.0, float(np.pi * (cutoff_cyc_per_px**2)))
+        out[f"{prefix}bandlimited_reduced_chi2"] = compute_noise_normalized_chi2(
+            p_bl, r_bl, np.asarray(sigma2_2d, dtype=np.float64) * max(bw_frac, 0.1)
+        )
     return out
 
 
@@ -63,8 +102,9 @@ def compute_t3_fusion_metrics(
     hr_pred_na: Optional[np.ndarray] = None,
     hr_pore_mask: Optional[np.ndarray] = None,
     hr_solid_mask: Optional[np.ndarray] = None,
+    cutoff_cyc_per_px: float = 0.43,
 ) -> Dict[str, float]:
-    """Evaluate T3a (25 um ground-truth chemical maps) and optional T3b (HR physical consistency)."""
+    """Evaluate T3a (25 um reference chemical maps, full & band-limited to ~58 um cutoff) and optional T3b."""
     zn_p = np.asarray(pred_zn_25um, dtype=np.float64)
     na_p = np.asarray(pred_na_25um, dtype=np.float64)
     zn_r = np.asarray(ref_zn_25um, dtype=np.float64)
@@ -84,8 +124,8 @@ def compute_t3_fusion_metrics(
     for iz in range(zn_r.shape[0]):
         sz = ref_zn_sigma2[iz] if ref_zn_sigma2 is not None else None
         sn = ref_na_sigma2[iz] if ref_na_sigma2 is not None else None
-        m_zn = _channel_25um_metrics(zn_p[iz], zn_r[iz], sz, prefix="zn_")
-        m_na = _channel_25um_metrics(na_p[iz], na_r[iz], sn, prefix="na_")
+        m_zn = _channel_25um_metrics(zn_p[iz], zn_r[iz], sz, prefix="zn_", cutoff_cyc_per_px=cutoff_cyc_per_px)
+        m_na = _channel_25um_metrics(na_p[iz], na_r[iz], sn, prefix="na_", cutoff_cyc_per_px=cutoff_cyc_per_px)
         slice_metrics.append({**m_zn, **m_na})
 
     keys = list(slice_metrics[0].keys())
@@ -93,8 +133,13 @@ def compute_t3_fusion_metrics(
     out["mean_rmse"] = 0.5 * (out["zn_rmse"] + out["na_rmse"])
     out["mean_pearson_r"] = 0.5 * (out["zn_pearson_r"] + out["na_pearson_r"])
     out["mean_ssim"] = 0.5 * (out["zn_ssim"] + out["na_ssim"])
+    out["mean_bandlimited_rmse"] = 0.5 * (out["zn_bandlimited_rmse"] + out["na_bandlimited_rmse"])
+    out["mean_bandlimited_pearson_r"] = 0.5 * (out["zn_bandlimited_pearson_r"] + out["na_bandlimited_pearson_r"])
     if "zn_reduced_chi2" in out and "na_reduced_chi2" in out:
         out["mean_reduced_chi2"] = 0.5 * (out["zn_reduced_chi2"] + out["na_reduced_chi2"])
+        out["mean_bandlimited_reduced_chi2"] = 0.5 * (
+            out["zn_bandlimited_reduced_chi2"] + out["na_bandlimited_reduced_chi2"]
+        )
 
     # Optional T3b HR physical consistency diagnostics
     if hr_pred_zn is not None and hr_pred_na is not None:

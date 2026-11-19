@@ -35,13 +35,16 @@ MultimodalBenchmark/
 
 ---
 
-## Benchmark Tasks
+## Benchmark Tasks & Two-Track Reference Versioning
 
-| Task | Input | Reference Target | Evaluation Region | Key Metrics |
+- **Primary Reference Track (`raw_float32`, Default for v1.0):** Registered, **uncleaned** `32-bit float` reconstructed volumes resampled via the fitted 7-DOF similarity transforms.
+- **Secondary Versioned Track (`cleaned_dering_v1`, Frozen Scope):** Registered `32-bit float` volumes processed strictly with frozen conservative polar de-ringing (`preprocessing.artifact_cleanup.remove_rings_polar_conservative`; `98.7–99.2%` ground-truth phantom edge sharpness retention; $|r(\Delta_1, \text{Zn}_{\text{XRD-CT}})| \le 0.03$). Radial polynomial cupping detrending and axial $z$-detrending are **excluded** from both tracks because empirical correlation against XRD-CT shows radial/axial polynomial fits absorb real $\text{Zn}^{2+}/\text{Na}^{+}$ core–shell and axial chemistry.
+
+| Task | Input | Reference Target (`raw_float32` Primary) | Evaluation Region | Key Metrics |
 |---|---|---|---|---|
-| **T1: Multi-Magnification XCT Super-Resolution** | Real lower-res I13-2 `float32` XCT (`~1.604×`: `2.6→1.625 µm`, `~2.026×`: `1.625→0.8125 µm`, `~2.493×`: `0.8125→0.325 µm`, `~5.051×`: `1.625→0.325 µm`, `~8.101×`: `2.6→0.325 µm`) | Paired higher-res I13-2 `float32` XCT (resampled via fitted 7-DOF transforms) | Non-cupping 3D overlap sub-volumes (`float32` required for thresholding & transport) | Cupping-invariant PSNR/SSIM, Edge MTF50, **3D FSC (`0.5`)**, frozen-threshold **OpenImpala** $D_{\text{eff}}, \tau$ |
+| **T1: Multi-Magnification XCT Super-Resolution** | Real lower-res I13-2 `float32` XCT (`~1.604×, ~2.026×, ~2.493×, ~5.051×, ~8.101×`; ratios cancel `500 µm` ruby ball manufacturing tolerance) | Paired higher-res I13-2 `float32` XCT (resampled via fitted 7-DOF transforms) | Ruby-shadow-free 3D overlap sub-volumes (`float32` required) | `psnr_db`, **`fringe_masked_psnr_db`**, **`bandlimited_psnr_db`** (unretrieved Fresnel fringe robustness), `ssim`, **3D FSC (`0.5`)**, frozen-threshold **OpenImpala** $D_{\text{eff}}, \tau$ |
 | **T2: Cross-Beamline XCT Super-Resolution** *(Gated on Stage 0C)* | I13-2 `1.625 µm` `float32` XCT | DIAD `0.54 µm` `float32` XCT (`~3.009×`) | Rigid pellet sub-volumes passing Stage 0C (`< 1.0 µm` octant drift) | Same as T1 (remains gated until Stage 0C runs on SCARF/Hamilton) |
-| **T3: Correlative Chemical Super-Resolution / Fusion** | DIAD `0.54 µm` XCT + `+47.5°`-corrected `50 µm` XRD-CT (`20 × 20`) | Sparse-sampled (`40 × 80`) continuum-subtracted `25 µm` Zn/Na **reference** maps (**T3a**, 4 slices: `43322–43325`) + HR physical consistency (**T3b**) | 4 held-out `25 µm` ROI slices (`±100 µm` z-guard) | **Noise-normalized $\chi^2_\nu$** vs odd/even FRC $\sigma^2_{\text{ref}}$, RMSE, Pearson $r$, pore-void leakage |
+| **T3: Correlative Chemical Super-Resolution / Fusion** | DIAD `0.54 µm` XCT + `+47.5°`-corrected `50 µm` XRD-CT (`103.6 µm` SB-FRC / `111.5 µm` `1/2-bit` res.) | Continuum-subtracted `25 µm` Zn/Na **reference** maps (`58.5 µm` SB-FRC / `57.9 µm` `1/2-bit` res.; true `1.79–1.93×` resolution gain; `43322–43325`) | 4 held-out `25 µm` slices (`±100 µm` z-guard; `43324` stage-`z` confirmed on SCARF) | **Band-limited (`k ≤ 0.43 cyc/px`, `~58 µm`) $\chi^2_\nu$, RMSE & $r$**, full-band $\chi^2_\nu$/RMSE, pore-void leakage |
 | **T4: Multimodal Phase Segmentation** | `float32` XCT sub-volume | **T4a:** `Pore / Solid / Bead`<br>**T4b:** XRD-validated `Pore / Na-13X / Zn-13X` | Guard-banded 3D sub-volumes | Per-class Dice, Boundary F1 (`1, 2` vox), phase-fraction error, **OpenImpala** $D_{\text{eff}}, \tau$, SSA |
 
 ---

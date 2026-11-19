@@ -37,6 +37,9 @@ class FRCResult:
     cutoff_0p5_cyc_per_px: float
     cutoff_0p143_cyc_per_px: float
     effective_resolution_px_0p5: float
+    cutoff_full_sb_0p5_cyc_per_px: float = 0.0
+    cutoff_half_bit_cyc_per_px: float = 0.0
+    effective_resolution_px_full_sb_0p5: float = float("inf")
 
 
 def estimate_conjugate_cor(
@@ -343,45 +346,57 @@ def compute_2d_frc(img_a: np.ndarray, img_b: np.ndarray) -> FRCResult:
 
     freqs: List[float] = []
     frc_vals: List[float] = []
+    half_bit_vals: List[float] = []
     num_prod = np.real(fa * np.conj(fb))
     pow_a = np.abs(fa) ** 2
     pow_b = np.abs(fb) ** 2
 
     for r in range(1, max_r + 1):
         ring = radii == r
-        if np.count_nonzero(ring) < 4:
+        nr = int(np.count_nonzero(ring))
+        if nr < 4:
             continue
         denom = np.sqrt(np.sum(pow_a[ring]) * np.sum(pow_b[ring])) + 1e-15
         frc_vals.append(float(np.sum(num_prod[ring]) / denom))
         freqs.append(float(r) / float(min(ny, nx)))
+        half_bit_vals.append(float((0.2071 + 1.9102 / np.sqrt(nr)) / (1.2071 + 0.9102 / np.sqrt(nr))))
 
     f_arr = np.asarray(freqs, dtype=np.float64)
     c_arr = np.asarray(frc_vals, dtype=np.float64)
+    hb_arr = np.asarray(half_bit_vals, dtype=np.float64)
+    # Spearman-Brown full-dataset correction (Rosenthal & Henderson 2003): FRC_full = 2*FRC_half / (1 + FRC_half)
+    sb_arr = np.where(c_arr > 0.0, (2.0 * c_arr) / (1.0 + np.maximum(c_arr, -0.99)), c_arr)
 
-    def _first_crossing(thresh: float) -> float:
+    def _first_crossing(curve: np.ndarray, thresh: float | np.ndarray) -> float:
         if f_arr.size == 0:
             return 0.0
-        below = np.where(c_arr < thresh)[0]
+        t_vec = np.full_like(curve, thresh) if np.ndim(thresh) == 0 else np.asarray(thresh, dtype=np.float64)
+        diff = curve - t_vec
+        below = np.where(diff < 0.0)[0]
         if below.size == 0:
             return float(f_arr[-1])
         idx = int(below[0])
         if idx == 0:
             return float(f_arr[0])
-        # Linear interpolation
         f0, f1 = f_arr[idx - 1], f_arr[idx]
-        v0, v1 = c_arr[idx - 1], c_arr[idx]
-        t = (thresh - v0) / (v1 - v0 + 1e-12)
+        t = (0.0 - diff[idx - 1]) / (diff[idx] - diff[idx - 1] - 1e-12)
         return float(f0 + np.clip(t, 0.0, 1.0) * (f1 - f0))
 
-    cut_05 = _first_crossing(0.5)
-    cut_0143 = _first_crossing(0.143)
+    cut_05 = _first_crossing(c_arr, 0.5)
+    cut_0143 = _first_crossing(c_arr, 0.143)
+    cut_sb05 = _first_crossing(sb_arr, 0.5)
+    cut_hb = _first_crossing(c_arr, hb_arr)
     eff_res = (1.0 / cut_05) if cut_05 > 1e-6 else float("inf")
+    eff_res_sb = (1.0 / cut_sb05) if cut_sb05 > 1e-6 else float("inf")
     return FRCResult(
         frequencies_cyc_per_px=f_arr,
         frc_curve=c_arr,
         cutoff_0p5_cyc_per_px=cut_05,
         cutoff_0p143_cyc_per_px=cut_0143,
         effective_resolution_px_0p5=eff_res,
+        cutoff_full_sb_0p5_cyc_per_px=cut_sb05,
+        cutoff_half_bit_cyc_per_px=cut_hb,
+        effective_resolution_px_full_sb_0p5=eff_res_sb,
     )
 
 
@@ -391,9 +406,14 @@ def estimate_odd_even_noise_floor(
     center_px: Optional[float] = None,
 ) -> Tuple[np.ndarray, np.ndarray, FRCResult]:
     """Reconstruct odd and even angular projections independently to estimate full-map variance sigma^2_ref(x,y)."""
-    rec_full = reconstruct_sinogram_2d(sinogram_at, angles_deg, center_px=center_px)
-    rec_even = reconstruct_sinogram_2d(sinogram_at[0::2], angles_deg[0::2], center_px=center_px)
-    rec_odd = reconstruct_sinogram_2d(sinogram_at[1::2], angles_deg[1::2], center_px=center_px)
+    sino = np.asarray(sinogram_at, dtype=np.float64)
+    ang = np.asarray(angles_deg, dtype=np.float64)
+    if ang.size > 2 and abs(abs(float(ang[-1] - ang[0])) - 360.0) < 0.35:
+        sino = sino[:-1]
+        ang = ang[:-1]
+    rec_full = reconstruct_sinogram_2d(sino, ang, center_px=center_px)
+    rec_even = reconstruct_sinogram_2d(sino[0::2], ang[0::2], center_px=center_px, circle=False)
+    rec_odd = reconstruct_sinogram_2d(sino[1::2], ang[1::2], center_px=center_px, circle=False)
 
     # Full map is average of even and odd half-maps -> Var(0.5*(E+O)) = 0.25 * (E - O)^2
     raw_var = 0.25 * (rec_even.astype(np.float64) - rec_odd.astype(np.float64)) ** 2

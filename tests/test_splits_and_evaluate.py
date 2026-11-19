@@ -82,7 +82,10 @@ def test_t1_classical_baselines_and_openimpala_transport(tmp_path: Path) -> None
 
     res_tri = evaluate_bundles("t1", {"pred": pred_tri}, {"pred": hr}, method_name="Tricubic")
     m = res_tri["metrics"]
+    assert res_tri["reference_track"] == "raw_float32"
     assert m["psnr_db"] > 18.0
+    assert m["fringe_masked_psnr_db"] > 18.0
+    assert m["bandlimited_psnr_db"] >= m["psnr_db"]
     assert 0.0 < m["fsc_0p5_cyc_per_vox"] <= 0.5
     assert m["d_eff_rel_err"] < 0.35
     assert np.isfinite(m["tortuosity_rel_err"])
@@ -133,9 +136,17 @@ def test_t3_guided_fusion_baselines_beat_unguided_bicubic() -> None:
     res_cnmf = evaluate_bundles("t3", {"zn": cnmf_zn, "na": cnmf_na}, ref_bundle, "CNMF")
 
     assert res_gtv["metrics"]["mean_rmse"] < res_bic["metrics"]["mean_rmse"]
+    assert res_gtv["metrics"]["mean_bandlimited_rmse"] < res_bic["metrics"]["mean_bandlimited_rmse"]
     assert res_jbu["metrics"]["mean_rmse"] < res_bic["metrics"]["mean_rmse"]
     assert res_cnmf["metrics"]["mean_rmse"] < res_bic["metrics"]["mean_rmse"]
     assert res_gtv["metrics"]["t3b_pore_leakage_rel"] < 1e-6
+
+    # Verify Nyquist checkerboard streak noise (k = 0.707 > 0.43 cyc/px) does NOT penalize band-limited T3 RMSE!
+    checker = (((yy + xx) % 2) * 2 - 1).astype(np.float32) * 1.5
+    ref_noisy = {**ref_bundle, "zn": zn_gt + checker, "na": na_gt - checker}
+    res_clean_pred_vs_noisy_ref = evaluate_bundles("t3", {"zn": zn_gt, "na": na_gt}, ref_noisy, "OracleClean")
+    assert res_clean_pred_vs_noisy_ref["metrics"]["mean_bandlimited_rmse"] < 1e-4
+    assert res_clean_pred_vs_noisy_ref["metrics"]["mean_rmse"] > 1.4
 
 
 def test_t4_multi_otsu_segmentation_and_evaluation() -> None:

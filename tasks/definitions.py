@@ -20,6 +20,8 @@ class TaskSpec:
     primary_metrics: Tuple[str, ...]
     gated_on_stage0c: bool = False
     classes: Optional[Dict[int, str]] = None
+    primary_reference_track: str = "raw_float32"
+    secondary_reference_track: str = "cleaned_dering_v1"
 
 
 def _load_task_specs(yaml_path: Path = DEFAULT_TASKS_YAML) -> Dict[str, TaskSpec]:
@@ -35,6 +37,8 @@ def _load_task_specs(yaml_path: Path = DEFAULT_TASKS_YAML) -> Dict[str, TaskSpec
             primary_metrics=tuple(str(m) for m in meta["primary_metrics"]),
             gated_on_stage0c=bool(meta.get("gated_on_stage0c", False)),
             classes=cls_map,
+            primary_reference_track=str(meta.get("primary_reference_track", "raw_float32")),
+            secondary_reference_track=str(meta.get("secondary_reference_track", "cleaned_dering_v1")),
         )
     return out
 

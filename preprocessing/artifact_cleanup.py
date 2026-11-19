@@ -384,10 +384,14 @@ def detrend_local_tomo_cupping_3d(
     sigma_yx_vox: float = 48.0,
     valid_mask_zyx: Optional[np.ndarray] = None,
 ) -> np.ndarray:
-    """Remove local-tomography radial truncation cupping via a pore-safe 7-term 2D quadratic + radial-quartic fit.
+    """Remove low-order 2D quadratic + radial-quartic [1, y, x, y^2, y*x, x^2, r^4] background curvature.
 
-    Because the fitted surface spans only [1, y, x, y^2, y*x, x^2, r^4] per z-slab, it has zero frequency response
-    at pore scales (cannot blur pore throats) and zero boundary-reflection error near the FOV rim.
+    WARNING (Chemistry Confounding — Frozen Scope Policy):
+    Empirical comparison against 25 um XRD-CT shows that in core-shell ion-exchanged pellets (Zn-rich outer shell,
+    Na-rich core), a 2D radial polynomial fit correlates strongly with real Zn/Na photoelectric attenuation
+    (r = +0.28..+0.59, inverting radial chemistry slopes). Do NOT apply this function to official benchmark
+    reference volumes (`raw_float32` or `cleaned_dering_v1`); restrict strictly to diagnostic visualization on
+    homogeneous samples.
     """
     _ = sigma_yx_vox  # retained in signature for backward compatibility
     vol = np.asarray(vol_zyx, dtype=np.float32)

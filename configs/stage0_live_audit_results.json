@@ -1795,5 +1795,261 @@
       "voxel_disagreement_raw_vs_derung_pct": 2.844,
       "voxel_disagreement_derung_vs_fringe_guard_pct": 16.616
     }
+  },
+  "round2_review_audit": {
+    "item1_xrdct_25_vs_50_frc_audit": {
+      "pairs": {
+        "43324_vs_43345_z9": {
+          "zn_25um": {
+            "k_raw_half_0p5_cyc_px": 0.393,
+            "res_raw_half_0p5_um": 63.61,
+            "k_full_sb_0p5_cyc_px": 0.5,
+            "res_full_sb_0p5_um": 50.0,
+            "k_half_bit_cyc_px": 0.5,
+            "res_half_bit_um": 50.0,
+            "k_gold_0p143_cyc_px": 0.5,
+            "res_gold_0p143_um": 50.0
+          },
+          "zn_50um": {
+            "k_raw_half_0p5_cyc_px": 0.5,
+            "res_raw_half_0p5_um": 100.0,
+            "k_full_sb_0p5_cyc_px": 0.5,
+            "res_full_sb_0p5_um": 100.0,
+            "k_half_bit_cyc_px": 0.5,
+            "res_half_bit_um": 100.0,
+            "k_gold_0p143_cyc_px": 0.5,
+            "res_gold_0p143_um": 100.0
+          },
+          "tot_25um": {
+            "k_raw_half_0p5_cyc_px": 0.3964,
+            "res_raw_half_0p5_um": 63.06,
+            "k_full_sb_0p5_cyc_px": 0.5,
+            "res_full_sb_0p5_um": 50.0,
+            "k_half_bit_cyc_px": 0.5,
+            "res_half_bit_um": 50.0,
+            "k_gold_0p143_cyc_px": 0.5,
+            "res_gold_0p143_um": 50.0
+          },
+          "tot_50um": {
+            "k_raw_half_0p5_cyc_px": 0.5,
+            "res_raw_half_0p5_um": 100.0,
+            "k_full_sb_0p5_cyc_px": 0.5,
+            "res_full_sb_0p5_um": 100.0,
+            "k_half_bit_cyc_px": 0.5,
+            "res_half_bit_um": 100.0,
+            "k_gold_0p143_cyc_px": 0.5,
+            "res_gold_0p143_um": 100.0
+          },
+          "zn_res_gain_ratio_raw_half_0p5": 1.572,
+          "zn_res_gain_ratio_full_sb_0p5": 2.0,
+          "zn_res_gain_ratio_half_bit": 2.0
+        },
+        "43322_vs_43395_z14": {
+          "zn_25um": {
+            "k_raw_half_0p5_cyc_px": 0.4086,
+            "res_raw_half_0p5_um": 61.18,
+            "k_full_sb_0p5_cyc_px": 0.4247,
+            "res_full_sb_0p5_um": 58.87,
+            "k_half_bit_cyc_px": 0.4344,
+            "res_half_bit_um": 57.55,
+            "k_gold_0p143_cyc_px": 0.5,
+            "res_gold_0p143_um": 50.0
+          },
+          "zn_50um": {
+            "k_raw_half_0p5_cyc_px": 0.4179,
+            "res_raw_half_0p5_um": 119.65,
+            "k_full_sb_0p5_cyc_px": 0.5,
+            "res_full_sb_0p5_um": 100.0,
+            "k_half_bit_cyc_px": 0.4787,
+            "res_half_bit_um": 104.45,
+            "k_gold_0p143_cyc_px": 0.5,
+            "res_gold_0p143_um": 100.0
+          },
+          "tot_25um": {
+            "k_raw_half_0p5_cyc_px": 0.367,
+            "res_raw_half_0p5_um": 68.11,
+            "k_full_sb_0p5_cyc_px": 0.4114,
+            "res_full_sb_0p5_um": 60.77,
+            "k_half_bit_cyc_px": 0.4157,
+            "res_half_bit_um": 60.13,
+            "k_gold_0p143_cyc_px": 0.5,
+            "res_gold_0p143_um": 50.0
+          },
+          "tot_50um": {
+            "k_raw_half_0p5_cyc_px": 0.4201,
+            "res_raw_half_0p5_um": 119.01,
+            "k_full_sb_0p5_cyc_px": 0.4711,
+            "res_full_sb_0p5_um": 106.12,
+            "k_half_bit_cyc_px": 0.4689,
+            "res_half_bit_um": 106.64,
+            "k_gold_0p143_cyc_px": 0.5,
+            "res_gold_0p143_um": 100.0
+          },
+          "zn_res_gain_ratio_raw_half_0p5": 1.956,
+          "zn_res_gain_ratio_full_sb_0p5": 1.699,
+          "zn_res_gain_ratio_half_bit": 1.815
+        },
+        "43323_vs_43398_z17": {
+          "zn_25um": {
+            "k_raw_half_0p5_cyc_px": 0.3632,
+            "res_raw_half_0p5_um": 68.84,
+            "k_full_sb_0p5_cyc_px": 0.3764,
+            "res_full_sb_0p5_um": 66.42,
+            "k_half_bit_cyc_px": 0.378,
+            "res_half_bit_um": 66.13,
+            "k_gold_0p143_cyc_px": 0.3899,
+            "res_gold_0p143_um": 64.12
+          },
+          "zn_50um": {
+            "k_raw_half_0p5_cyc_px": 0.3518,
+            "res_raw_half_0p5_um": 142.12,
+            "k_full_sb_0p5_cyc_px": 0.5,
+            "res_full_sb_0p5_um": 100.0,
+            "k_half_bit_cyc_px": 0.3915,
+            "res_half_bit_um": 127.7,
+            "k_gold_0p143_cyc_px": 0.5,
+            "res_gold_0p143_um": 100.0
+          },
+          "tot_25um": {
+            "k_raw_half_0p5_cyc_px": 0.2941,
+            "res_raw_half_0p5_um": 85.01,
+            "k_full_sb_0p5_cyc_px": 0.3415,
+            "res_full_sb_0p5_um": 73.2,
+            "k_half_bit_cyc_px": 0.3468,
+            "res_half_bit_um": 72.09,
+            "k_gold_0p143_cyc_px": 0.4369,
+            "res_gold_0p143_um": 57.22
+          },
+          "tot_50um": {
+            "k_raw_half_0p5_cyc_px": 0.3682,
+            "res_raw_half_0p5_um": 135.8,
+            "k_full_sb_0p5_cyc_px": 0.3802,
+            "res_full_sb_0p5_um": 131.5,
+            "k_half_bit_cyc_px": 0.3811,
+            "res_half_bit_um": 131.19,
+            "k_gold_0p143_cyc_px": 0.479,
+            "res_gold_0p143_um": 104.38
+          },
+          "zn_res_gain_ratio_raw_half_0p5": 2.064,
+          "zn_res_gain_ratio_full_sb_0p5": 1.506,
+          "zn_res_gain_ratio_half_bit": 1.931
+        },
+        "43325_vs_43399_z18": {
+          "zn_25um": {
+            "k_raw_half_0p5_cyc_px": 0.3937,
+            "res_raw_half_0p5_um": 63.5,
+            "k_full_sb_0p5_cyc_px": 0.4266,
+            "res_full_sb_0p5_um": 58.61,
+            "k_half_bit_cyc_px": 0.4306,
+            "res_half_bit_um": 58.07,
+            "k_gold_0p143_cyc_px": 0.4478,
+            "res_gold_0p143_um": 55.83
+          },
+          "zn_50um": {
+            "k_raw_half_0p5_cyc_px": 0.4214,
+            "res_raw_half_0p5_um": 118.64,
+            "k_full_sb_0p5_cyc_px": 0.4364,
+            "res_full_sb_0p5_um": 114.58,
+            "k_half_bit_cyc_px": 0.4387,
+            "res_half_bit_um": 113.98,
+            "k_gold_0p143_cyc_px": 0.5,
+            "res_gold_0p143_um": 100.0
+          },
+          "tot_25um": {
+            "k_raw_half_0p5_cyc_px": 0.2979,
+            "res_raw_half_0p5_um": 83.92,
+            "k_full_sb_0p5_cyc_px": 0.3333,
+            "res_full_sb_0p5_um": 75.0,
+            "k_half_bit_cyc_px": 0.3369,
+            "res_half_bit_um": 74.21,
+            "k_gold_0p143_cyc_px": 0.5,
+            "res_gold_0p143_um": 50.0
+          },
+          "tot_50um": {
+            "k_raw_half_0p5_cyc_px": 0.3192,
+            "res_raw_half_0p5_um": 156.63,
+            "k_full_sb_0p5_cyc_px": 0.3454,
+            "res_full_sb_0p5_um": 144.77,
+            "k_half_bit_cyc_px": 0.3392,
+            "res_half_bit_um": 147.43,
+            "k_gold_0p143_cyc_px": 0.4881,
+            "res_gold_0p143_um": 102.43
+          },
+          "zn_res_gain_ratio_raw_half_0p5": 1.868,
+          "zn_res_gain_ratio_full_sb_0p5": 1.955,
+          "zn_res_gain_ratio_half_bit": 1.963
+        }
+      },
+      "mean_summary": {
+        "nyquist_full_period_limit_25um": 50.0,
+        "nyquist_full_period_limit_50um": 100.0,
+        "mean_25um_zn_raw_half0p5_um": 64.28,
+        "mean_25um_zn_full_sb0p5_um": 58.48,
+        "mean_25um_zn_half_bit_um": 57.94,
+        "mean_25um_zn_gold0p143_um": 54.99,
+        "mean_50um_zn_raw_half0p5_um": 120.1,
+        "mean_50um_zn_full_sb0p5_um": 103.64,
+        "mean_50um_zn_half_bit_um": 111.53,
+        "mean_50um_zn_gold0p143_um": 100.0,
+        "true_zn_resolution_ratio_50_over_25_raw_half0p5": 1.865,
+        "true_zn_resolution_ratio_50_over_25_full_sb0p5": 1.79,
+        "true_zn_resolution_ratio_50_over_25_half_bit": 1.927
+      }
+    },
+    "item2_cupping_vs_chemistry_correlation": {
+      "full_pellet_169068_vs_25um_xrdct": {
+        "43322_iz190": {
+          "silhouette_cosine_overlap": 0.7534,
+          "corr_removed_cupping_d2_vs_xrdct_zn_frac": 0.2793,
+          "corr_removed_rings_d1_vs_xrdct_zn_frac": 0.0152,
+          "corr_smoothed_raw_xct_vs_xrdct_zn_frac": 0.2353,
+          "corr_after_cupping_detrend_vs_xrdct_zn_frac": 0.0548
+        },
+        "43323_iz248": {
+          "silhouette_cosine_overlap": 0.7309,
+          "corr_removed_cupping_d2_vs_xrdct_zn_frac": 0.5926,
+          "corr_removed_rings_d1_vs_xrdct_zn_frac": -0.0236,
+          "corr_smoothed_raw_xct_vs_xrdct_zn_frac": 0.3887,
+          "corr_after_cupping_detrend_vs_xrdct_zn_frac": -0.1987
+        },
+        "43325_iz268": {
+          "silhouette_cosine_overlap": 0.5818,
+          "corr_removed_cupping_d2_vs_xrdct_zn_frac": -0.3823,
+          "corr_removed_rings_d1_vs_xrdct_zn_frac": 0.0262,
+          "corr_smoothed_raw_xct_vs_xrdct_zn_frac": -0.4275,
+          "corr_after_cupping_detrend_vs_xrdct_zn_frac": -0.1031
+        }
+      },
+      "local_tomo_169065_audit": {
+        "corr_removed_cupping_d2_with_outer_shell_proximity": 0.5831,
+        "corr_removed_rings_d1_with_outer_shell_proximity": -0.0569,
+        "finding": "In BOTH full-FOV 169068 and local-tomo 169065, the outer Zn-rich catalyst shell coincides with larger radial distance toward the capillary wall! Thus 7-term polynomial cupping detrending is CONFOUNDED with radial Zn/Na core-shell attenuation (absorbing real core-shell contrast), whereas polar de-ringing (d1) has ~0.00 correlation with chemistry!"
+      }
+    },
+    "item3_synthetic_phantom_ground_truth_validation": {
+      "self_reported_report": {
+        "ring_center_yx": [
+          210.5,
+          168.0
+        ],
+        "ring_rms_removed": 0.3381,
+        "ring_anova_r2_before": 0.036434,
+        "ring_anova_r2_after": 0.020818,
+        "ring_variance_reduction_pct": 42.86,
+        "edge_sharpness_retention_ratio": 0.9838,
+        "background_std_before": 2.3368,
+        "background_std_after": 2.309
+      },
+      "true_edge_retention_vs_ringfree_gt_pct": 98.723,
+      "true_edge_retention_vs_noiseless_gt_pct": 99.173,
+      "ring_zone_rmse_before_gray": 1.3856,
+      "ring_zone_rmse_after_gray": 0.8284,
+      "ring_rmse_suppression_pct": 40.21,
+      "ring_free_zone_perturbation_rmse_gray": 0.3213,
+      "core_shell_slope_retained_after_polar_dering": 0.9463,
+      "core_shell_corr_after_polar_dering": 0.8432,
+      "core_shell_slope_retained_after_7term_cupping_detrend": -0.4485,
+      "core_shell_corr_after_7term_cupping_detrend": -0.5839
+    }
   }
 }

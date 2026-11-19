@@ -201,19 +201,49 @@ def compute_3d_fsc(
     )
 
 
+def compute_fresnel_fringe_free_mask(
+    ref: np.ndarray,
+    base_mask: Optional[np.ndarray] = None,
+    laplace_percentile: float = 88.0,
+) -> np.ndarray:
+    """Exclude high-|Laplacian| unretrieved Fresnel phase-contrast double-fringe rims (z_sd=30 mm, no Paganin).
+
+    Because propagation phase fringes depend nonlinearly on objective PSF, scintillator thickness, and exposure,
+    LR and HR scans exhibit physically distinct edge overshoots that no intensity-only SR model can invert exactly.
+    """
+    from scipy.ndimage import laplace
+
+    r = np.asarray(ref, dtype=np.float32)
+    abs_lap = np.abs(laplace(gaussian_filter(r, sigma=0.6)))
+    valid0 = (base_mask > 0) if base_mask is not None else np.ones(r.shape, dtype=bool)
+    thresh = float(np.percentile(abs_lap[valid0], laplace_percentile)) if np.any(valid0) else float("inf")
+    non_fringe = valid0 & (abs_lap <= thresh)
+    return non_fringe if int(np.count_nonzero(non_fringe)) >= 16 else valid0
+
+
 def compute_image_sr_metrics(
     pred: np.ndarray,
     ref: np.ndarray,
     mask: Optional[np.ndarray] = None,
     voxel_size_um: Optional[float] = None,
 ) -> Dict[str, float]:
-    """Compute standardized T1/T2 super-resolution image metrics."""
+    """Compute standardized T1/T2 super-resolution image metrics (full-band, fringe-masked, and band-limited)."""
     pred_norm = affine_cupping_normalize(pred, ref, mask=mask)
     psnr_val = compute_psnr(pred_norm, ref, mask=mask)
     ssim_val = compute_ssim_3d(pred_norm, ref, mask=mask)
     mtf50_val = compute_edge_mtf50(pred_norm, ref)
+
+    # Companion metrics accounting for irreducible objective-dependent Fresnel phase fringes & Nyquist shot noise:
+    fringe_free_mask = compute_fresnel_fringe_free_mask(ref, base_mask=mask)
+    fringe_masked_psnr = compute_psnr(pred_norm, ref, mask=fringe_free_mask)
+    pred_bl = gaussian_filter(pred_norm.astype(np.float32), sigma=0.85)
+    ref_bl = gaussian_filter(np.asarray(ref, dtype=np.float32), sigma=0.85)
+    bandlimited_psnr = compute_psnr(pred_bl, ref_bl, mask=mask)
+
     out = {
         "psnr_db": psnr_val,
+        "fringe_masked_psnr_db": fringe_masked_psnr,
+        "bandlimited_psnr_db": bandlimited_psnr,
         "ssim": ssim_val,
         "edge_mtf50_cyc_per_vox": mtf50_val,
     }
