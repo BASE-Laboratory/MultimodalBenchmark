@@ -74,15 +74,9 @@ def audit_live_xrdct_sinograms(
         motors = _inspect_nexus_stage_motors(fpath)
         sino_obj = load_xrdct_sinogram(fpath, q_range=(0.85, 3.10), scan_id=sid)
         total_sino = np.sum(np.clip(sino_obj.data, 0.0, None), axis=0)  # (n_angles, n_trans)
+        raw_cor = estimate_conjugate_cor(total_sino, sino_obj.angles_deg)
 
-        cor = estimate_conjugate_cor(total_sino, sino_obj.angles_deg)
-        rec_tot, sigma2_tot, frc_tot = estimate_odd_even_noise_floor(
-            total_sino,
-            sino_obj.angles_deg,
-            center_px=cor.center_px,
-        )
-
-        # Multi-peak NNLS unmixing with empty-capillary background subtraction
+        # Continuum-subtracted + q-calibrated multi-peak NNLS unmixing (dq = -0.00125 A^-1, sigma = 1.0 bin)
         unmixed = unmix_sinogram_nnls(
             sino_obj.data,
             sino_obj.q_inv_angstrom,
@@ -90,6 +84,16 @@ def audit_live_xrdct_sinograms(
             zn_spec,
             cap_spec,
             q_bounds=(0.90, 3.05),
+            subtract_continuum=True,
+            q_shift_inv_a=-0.00125,
+            broaden_sigma_bins=1.0,
+        )
+        bragg_sino = unmixed["na"] + unmixed["zn"]
+        cor = estimate_conjugate_cor(bragg_sino, sino_obj.angles_deg)
+        rec_tot, sigma2_tot, frc_tot = estimate_odd_even_noise_floor(
+            bragg_sino,
+            sino_obj.angles_deg,
+            center_px=cor.center_px,
         )
         na_rec, na_oe_s2, na_frc = estimate_odd_even_noise_floor(
             unmixed["na"], sino_obj.angles_deg, center_px=cor.center_px
@@ -100,6 +104,17 @@ def audit_live_xrdct_sinograms(
         cap_rec = reconstruct_sinogram_2d(unmixed["capillary"], sino_obj.angles_deg, center_px=cor.center_px)
 
         nnls_corr = float(np.corrcoef(na_rec.ravel(), zn_rec.ravel())[0, 1])
+        tot_bragg = np.clip(na_rec, 0.0, None) + np.clip(zn_rec, 0.0, None)
+        pellet_mask = tot_bragg > 0.20 * float(np.max(tot_bragg))
+        in_pellet_corr = (
+            float(np.corrcoef(na_rec[pellet_mask], zn_rec[pellet_mask])[0, 1])
+            if int(np.count_nonzero(pellet_mask)) > 10
+            else float("nan")
+        )
+        na_pos = float(np.sum(np.clip(na_rec, 0.0, None)))
+        zn_pos = float(np.sum(np.clip(zn_rec, 0.0, None)))
+        zn_frac = zn_pos / (na_pos + zn_pos + 1e-12)
+
         nnls_examples[sid] = {
             "na": na_rec,
             "zn": zn_rec,
@@ -114,15 +129,21 @@ def audit_live_xrdct_sinograms(
             "sinogram_shape_qat": list(sino_obj.data.shape),
             "angles_min_max_deg": [round(float(sino_obj.angles_deg.min()), 3), round(float(sino_obj.angles_deg.max()), 3)],
             "conjugate_cor_px": round(cor.center_px, 4),
+            "raw_unsubtracted_cor_px": round(raw_cor.center_px, 4),
             "nominal_cor_px": cor.nominal_center_px,
-            "cor_offset_px": round(cor.offset_from_nominal_px, 4),
-            "cor_offset_um": round(cor.offset_from_nominal_px * 25.0, 2),
+            "geometric_kb_midpoint_px": 19.5,
+            "cor_offset_from_nominal20_px": round(cor.offset_from_nominal_px, 4),
+            "cor_offset_from_nominal20_um": round(cor.offset_from_nominal_px * 25.0, 2),
+            "cor_offset_from_kb_midpoint_um": round((cor.center_px - 19.5) * 25.0, 2),
             "conjugate_self_absorption_asymmetry": round(cor.conjugate_asymmetry, 4),
             "total_odd_even_frc_0p5_cyc_px": round(frc_tot.cutoff_0p5_cyc_per_px, 4),
             "na_odd_even_frc_0p5_cyc_px": round(na_frc.cutoff_0p5_cyc_per_px, 4),
             "zn_odd_even_frc_0p5_cyc_px": round(zn_frc.cutoff_0p5_cyc_per_px, 4),
             "zn_effective_res_um_at_frc0p5": round(zn_frc.effective_resolution_px_0p5 * 25.0, 2),
+            "zn_phase_fraction": round(zn_frac, 4),
             "nnls_na_zn_spatial_corr": round(nnls_corr, 4),
+            "nnls_in_pellet_na_zn_corr": round(in_pellet_corr, 4) if np.isfinite(in_pellet_corr) else None,
+            "rigaku_to_diad_q_shift_inv_A": -0.00125,
             "motors": motors,
         }
 

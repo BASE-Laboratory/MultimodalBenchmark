@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
-from scipy.ndimage import shift as nd_shift
+from scipy.ndimage import gaussian_filter1d, percentile_filter, shift as nd_shift
 from scipy.optimize import minimize_scalar, nnls
 from skimage.transform import iradon
 
@@ -148,42 +148,79 @@ def reconstruct_sinogram_2d(
     return (rec * scale).astype(np.float32)
 
 
+def calibrate_powder_q_shift(
+    sinogram_qat: np.ndarray,
+    q_grid: np.ndarray,
+    na_ref: PowderXRDSpectrum,
+    zn_ref: PowderXRDSpectrum,
+    q_bounds: Tuple[float, float] = (0.90, 3.05),
+    search_range_inv_a: Tuple[float, float] = (-0.004, 0.004),
+    num_steps: int = 33,
+    broaden_sigma_bins: float = 1.0,
+    continuum_window_bins: int = 45,
+) -> float:
+    """Calibrate zero-point q-shift (A^-1) between laboratory Cu-Ka powder XRD and synchrotron DIAD q-grid."""
+    q = np.asarray(q_grid, dtype=np.float64)
+    mask = (q >= q_bounds[0]) & (q <= q_bounds[1])
+    sub = np.asarray(sinogram_qat[mask], dtype=np.float64)
+    mean_ray = np.mean(sub, axis=(1, 2))
+    mean_bragg = np.clip(mean_ray - percentile_filter(mean_ray, percentile=15, size=continuum_window_bins), 0.0, None)
+
+    best_dq = 0.0
+    best_res = float("inf")
+    for dq in np.linspace(search_range_inv_a[0], search_range_inv_a[1], num_steps):
+        basis, _ = build_endmember_basis_on_q(
+            q,
+            na_ref,
+            zn_ref,
+            cap_ref=None,
+            q_bounds=q_bounds,
+            q_shift_inv_a=float(dq),
+            broaden_sigma_bins=broaden_sigma_bins,
+            continuum_window_bins=continuum_window_bins,
+        )
+        _, rnorm = nnls(basis, mean_bragg)
+        if rnorm < best_res:
+            best_res = float(rnorm)
+            best_dq = float(dq)
+    return best_dq
+
+
 def build_endmember_basis_on_q(
     q_grid: np.ndarray,
     na_ref: PowderXRDSpectrum,
     zn_ref: PowderXRDSpectrum,
     cap_ref: Optional[PowderXRDSpectrum] = None,
     q_bounds: Tuple[float, float] = (0.85, 3.10),
+    q_shift_inv_a: float = -0.00125,
+    broaden_sigma_bins: float = 1.0,
+    continuum_window_bins: int = 45,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Interpolate powder XRD endmembers (Na-13X, Zn-13X, optional borosilicate capillary) onto DIAD q-grid."""
+    """Interpolate powder XRD endmembers onto DIAD q-grid with zero-point shift, broadening, and continuum removal."""
     q = np.asarray(q_grid, dtype=np.float64)
     mask = (q >= q_bounds[0]) & (q <= q_bounds[1])
     q_sub = q[mask]
 
-    def _interp_norm(spec: PowderXRDSpectrum, subtract: Optional[np.ndarray] = None) -> np.ndarray:
-        y = np.interp(q_sub, spec.q_inv_angstrom, spec.intensity, left=0.0, right=0.0)
-        if subtract is not None:
-            # Scale background conservatively so baseline remains non-negative
-            alpha = np.percentile(y / np.maximum(subtract, 1e-6), 10.0)
-            y = np.clip(y - alpha * subtract, 0.0, None)
+    def _interp_bragg(spec: PowderXRDSpectrum) -> np.ndarray:
+        # Positive q_shift_inv_a shifts powder peaks to higher q: evaluate powder spectrum at (q_sub - q_shift_inv_a)
+        y = np.interp(q_sub - q_shift_inv_a, spec.q_inv_angstrom, spec.intensity, left=0.0, right=0.0)
+        if continuum_window_bins > 1:
+            y = np.clip(y - percentile_filter(y, percentile=15, size=continuum_window_bins), 0.0, None)
         else:
             y = np.clip(y - np.percentile(y, 5.0), 0.0, None)
-        norm = float(np.linalg.norm(y)) + 1e-12
-        return y / norm
+        if broaden_sigma_bins > 0.0:
+            y = gaussian_filter1d(y, sigma=broaden_sigma_bins)
+        return y / (float(np.linalg.norm(y)) + 1e-12)
 
-    cap_vec = None
-    if cap_ref is not None:
-        cap_raw = np.interp(q_sub, cap_ref.q_inv_angstrom, cap_ref.intensity, left=0.0, right=0.0)
-        cap_raw = np.clip(cap_raw - np.percentile(cap_raw, 2.0), 0.0, None)
-        cap_vec = cap_raw / (float(np.linalg.norm(cap_raw)) + 1e-12)
-
-    na_vec = _interp_norm(na_ref, subtract=cap_vec)
-    zn_vec = _interp_norm(zn_ref, subtract=cap_vec)
+    na_vec = _interp_bragg(na_ref)
+    zn_vec = _interp_bragg(zn_ref)
 
     cols = [na_vec, zn_vec]
-    if cap_vec is not None:
-        cols.append(cap_vec)
-    basis = np.column_stack(cols)  # (n_q_sub, 2 or 3)
+    if cap_ref is not None:
+        cap_raw = np.interp(q_sub - q_shift_inv_a, cap_ref.q_inv_angstrom, cap_ref.intensity, left=0.0, right=0.0)
+        cap_raw = np.clip(cap_raw - np.percentile(cap_raw, 2.0), 0.0, None)
+        cols.append(cap_raw / (float(np.linalg.norm(cap_raw)) + 1e-12))
+    basis = np.column_stack(cols)
     return basis, mask
 
 
@@ -194,22 +231,61 @@ def unmix_sinogram_nnls(
     zn_basis_or_spec: np.ndarray | PowderXRDSpectrum,
     cap_basis_or_spec: Optional[np.ndarray | PowderXRDSpectrum] = None,
     q_bounds: Tuple[float, float] = (0.85, 3.10),
+    subtract_continuum: Optional[bool] = None,
+    q_shift_inv_a: float = -0.00125,
+    broaden_sigma_bins: float = 1.0,
+    continuum_window_bins: int = 45,
 ) -> Dict[str, np.ndarray]:
-    """Unmix a (n_q, n_angles, n_trans) XRD-CT sinogram into Na-13X, Zn-13X, and capillary sinograms via NNLS."""
+    """Unmix a (n_q, n_angles, n_trans) XRD-CT sinogram into Na-13X, Zn-13X, and continuum/capillary sinograms.
+
+    When laboratory PowderXRDSpectrum references are supplied, per-ray rolling continuum subtraction removes the
+    air + borosilicate glass scatter baseline prior to sharp Faujasite Bragg NNLS unmixing, eliminating both the
+    outer capillary halo leak into zeolite maps and cross-phase doublet wing spillover.
+    """
     q = np.asarray(q_grid, dtype=np.float64)
-    if isinstance(na_basis_or_spec, PowderXRDSpectrum):
+    is_powder_spec = isinstance(na_basis_or_spec, PowderXRDSpectrum)
+    if subtract_continuum is None:
+        subtract_continuum = is_powder_spec
+
+    if is_powder_spec:
         assert isinstance(zn_basis_or_spec, PowderXRDSpectrum)
-        cap_spec = cap_basis_or_spec if isinstance(cap_basis_or_spec, PowderXRDSpectrum) else None
-        basis, mask = build_endmember_basis_on_q(q, na_basis_or_spec, zn_basis_or_spec, cap_spec, q_bounds=q_bounds)
+        # If per-ray continuum is removed first, fit pure 2-phase Bragg [Na-13X, Zn-13X] without broad glass leakage
+        cap_spec = (
+            cap_basis_or_spec
+            if (not subtract_continuum and isinstance(cap_basis_or_spec, PowderXRDSpectrum))
+            else None
+        )
+        basis, mask = build_endmember_basis_on_q(
+            q,
+            na_basis_or_spec,
+            zn_basis_or_spec,
+            cap_spec,
+            q_bounds=q_bounds,
+            q_shift_inv_a=q_shift_inv_a,
+            broaden_sigma_bins=broaden_sigma_bins,
+            continuum_window_bins=continuum_window_bins if subtract_continuum else 0,
+        )
     else:
         mask = (q >= q_bounds[0]) & (q <= q_bounds[1])
-        cols = [np.asarray(na_basis_or_spec, dtype=np.float64)[mask], np.asarray(zn_basis_or_spec, dtype=np.float64)[mask]]
-        if cap_basis_or_spec is not None:
+        cols = [
+            np.asarray(na_basis_or_spec, dtype=np.float64)[mask],
+            np.asarray(zn_basis_or_spec, dtype=np.float64)[mask],
+        ]
+        if cap_basis_or_spec is not None and not subtract_continuum:
             cols.append(np.asarray(cap_basis_or_spec, dtype=np.float64)[mask])
         cols = [c / (np.linalg.norm(c) + 1e-12) for c in cols]
         basis = np.column_stack(cols)
 
     sub = np.asarray(sinogram_qat[mask], dtype=np.float64)
+    continuum_sino: Optional[np.ndarray] = None
+    if subtract_continuum:
+        bg_qat = percentile_filter(sub, percentile=15, size=(continuum_window_bins, 1, 1))
+        # Subtract air baseline floor (outermost rays) so capillary sinogram isolates the glass wall + pellet scatter
+        bg_mean = np.mean(bg_qat, axis=0)
+        air_floor = float(np.percentile(bg_mean, 10.0))
+        continuum_sino = np.clip(bg_mean - air_floor, 0.0, None).astype(np.float32)
+        sub = np.clip(sub - bg_qat, 0.0, None)
+
     _, n_ang, n_trans = sub.shape
     n_comp = basis.shape[1]
     coeffs = np.zeros((n_comp, n_ang, n_trans), dtype=np.float32)
@@ -220,8 +296,12 @@ def unmix_sinogram_nnls(
             sol, _ = nnls(basis, spectrum)
             coeffs[:, ia, it] = sol.astype(np.float32)
 
-    out = {"na": coeffs[0], "zn": coeffs[1]}
-    if n_comp >= 3:
+    out: Dict[str, np.ndarray] = {"na": coeffs[0], "zn": coeffs[1]}
+    if continuum_sino is not None:
+        out["continuum"] = continuum_sino
+        if cap_basis_or_spec is not None:
+            out["capillary"] = continuum_sino
+    elif n_comp >= 3:
         out["capillary"] = coeffs[2]
     return out
 

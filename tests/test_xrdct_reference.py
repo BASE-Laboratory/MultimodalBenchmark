@@ -140,3 +140,29 @@ def test_real_zenodo_powder_and_xrdct_audit(tmp_path: Path) -> None:
         p50_d = p50 - p50.mean(axis=1, keepdims=True)
         assert float(np.corrcoef(p25_d.ravel(), p50_d.ravel())[0, 1]) > 0.99
 
+    sino_43322 = Path("data/cache/zenodo/k11-43322-diffraction-DiffInt_Mask_Azz_Txt.nxs")
+    if sino_43322.exists() and sino_25.exists():
+        from multimodal_benchmark.io import load_xrdct_sinogram
+        from registration.xrdct_reference import calibrate_powder_q_shift, reconstruct_sinogram_2d
+
+        spec_zn = load_ascii_xrd("data/cache/zenodo/Zn13Xhighres_2-Theta_Omega.asc")
+        spec_cap = load_ascii_xrd("data/cache/zenodo/empty_cap_2-Theta_Omega.asc")
+
+        s24_full = load_xrdct_sinogram(sino_25, q_range=(0.85, 3.10), scan_id=43324)
+        dq_est = calibrate_powder_q_shift(s24_full.data, s24_full.q_inv_angstrom, spec_na, spec_zn)
+        assert -0.0020 <= dq_est <= -0.0005
+
+        u24 = unmix_sinogram_nnls(s24_full.data, s24_full.q_inv_angstrom, spec_na, spec_zn, spec_cap, q_bounds=(0.90, 3.05))
+        na24 = np.clip(reconstruct_sinogram_2d(u24["na"], s24_full.angles_deg, center_px=19.5), 0.0, None)
+        zn24 = np.clip(reconstruct_sinogram_2d(u24["zn"], s24_full.angles_deg, center_px=19.5), 0.0, None)
+        assert float(zn24.sum() / (na24.sum() + zn24.sum())) > 0.95
+
+        s22_full = load_xrdct_sinogram(sino_43322, q_range=(0.85, 3.10), scan_id=43322)
+        u22 = unmix_sinogram_nnls(s22_full.data, s22_full.q_inv_angstrom, spec_na, spec_zn, spec_cap, q_bounds=(0.90, 3.05))
+        na22 = reconstruct_sinogram_2d(u22["na"], s22_full.angles_deg, center_px=19.5)
+        zn22 = reconstruct_sinogram_2d(u22["zn"], s22_full.angles_deg, center_px=19.5)
+        tot22 = np.clip(na22, 0.0, None) + np.clip(zn22, 0.0, None)
+        pmask = tot22 > 0.20 * float(tot22.max())
+        assert float(np.corrcoef(na22[pmask], zn22[pmask])[0, 1]) < -0.60
+
+
