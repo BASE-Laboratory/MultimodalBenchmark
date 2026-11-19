@@ -22,7 +22,7 @@ MultimodalBenchmark/
 │   ├── xrdct_reference.py         # Conjugate COR solver, NNLS unmixing & FRC noise floor
 │   ├── diad_correlative.py        # Astra/TomoPy chirality check & 3D PSF XCT<->XRD-CT alignment
 │   ├── i13_ladder.py              # Multi-scale 7-DOF I13-2 ladder registration & TRE
-│   └── cross_beamline_audit.py    # Bead-vs-pellet rigid/octant audit & certified_regions.yaml
+│   └── cross_beamline_audit.py    # Fiducial-vs-pellet slip/octant audit & region gating YAML
 ├── tasks/                         # Task loaders, contracts & submission validators
 ├── splits/                        # Leakage-free 3D train/val/test split generator (guard-banded)
 ├── baselines/                     # Classical (Bicubic, JBU, Guided-TV, CNMF, Otsu) & learned runners
@@ -35,12 +35,12 @@ MultimodalBenchmark/
 
 ## Benchmark Tasks
 
-| Task | Input | Ground Truth | Evaluation Region | Key Metrics |
+| Task | Input | Reference Target | Evaluation Region | Key Metrics |
 |---|---|---|---|---|
-| **T1: Multi-Magnification XCT Super-Resolution** | Real lower-res I13-2 XCT (`1.6×`: `2.6→1.625 µm`, `2×`: `1.625→0.8125 µm`, `2.5×`: `0.8125→0.325 µm`, `5×`: `1.625→0.325 µm`, `8×`: `2.6→0.325 µm`) | Paired higher-res I13-2 XCT | Certified non-cupping overlap sub-volumes | Cupping-invariant PSNR/SSIM, Edge MTF50, **3D FSC (`0.5`)**, frozen-threshold **OpenImpala** $D_{\text{eff}}, \tau$ |
-| **T2: Cross-Beamline XCT Super-Resolution** | I13-2 `1.625 µm` XCT | DIAD `0.54 µm` XCT (`3.009×`) | Stage-0C certified rigid pellet sub-volumes | Same as T1 (gated on Stage 0C TRE threshold) |
-| **T3: Correlative Chemical Super-Resolution / Fusion** | DIAD `0.54 µm` XCT + `+47.5°`-corrected `50 µm` XRD-CT (`20 × 20`) | Measured continuum-subtracted `25 µm` Zn/Na XRD-CT maps (**T3a**, 4 slices: `43322–43325`) + HR physical consistency (**T3b**) | 4 held-out `25 µm` ROI slices (`±100 µm` z-guard) | **Noise-normalized $\chi^2_\nu$** vs odd/even FRC $\sigma^2_{\text{ref}}$, RMSE, Pearson $r$, pore-void leakage |
-| **T4: Multimodal Phase Segmentation** | XCT sub-volume | **T4a:** `Pore / Solid / Bead`<br>**T4b:** XRD-validated `Pore / Na-13X / Zn-13X` | Guard-banded 3D sub-volumes | Per-class Dice, Boundary F1 (`1, 2` vox), phase-fraction error, **OpenImpala** $D_{\text{eff}}, \tau$, SSA |
+| **T1: Multi-Magnification XCT Super-Resolution** | Real lower-res I13-2 `float32` XCT (`~1.604×`: `2.6→1.625 µm`, `~2.026×`: `1.625→0.8125 µm`, `~2.493×`: `0.8125→0.325 µm`, `~5.051×`: `1.625→0.325 µm`, `~8.101×`: `2.6→0.325 µm`) | Paired higher-res I13-2 `float32` XCT (resampled via fitted 7-DOF transforms) | Non-cupping 3D overlap sub-volumes (`float32` required for thresholding & transport) | Cupping-invariant PSNR/SSIM, Edge MTF50, **3D FSC (`0.5`)**, frozen-threshold **OpenImpala** $D_{\text{eff}}, \tau$ |
+| **T2: Cross-Beamline XCT Super-Resolution** *(Gated on Stage 0C)* | I13-2 `1.625 µm` `float32` XCT | DIAD `0.54 µm` `float32` XCT (`~3.009×`) | Rigid pellet sub-volumes passing Stage 0C (`< 1.0 µm` octant drift) | Same as T1 (remains gated until Stage 0C runs on SCARF/Hamilton) |
+| **T3: Correlative Chemical Super-Resolution / Fusion** | DIAD `0.54 µm` XCT + `+47.5°`-corrected `50 µm` XRD-CT (`20 × 20`) | Sparse-sampled (`40 × 80`) continuum-subtracted `25 µm` Zn/Na **reference** maps (**T3a**, 4 slices: `43322–43325`) + HR physical consistency (**T3b**) | 4 held-out `25 µm` ROI slices (`±100 µm` z-guard) | **Noise-normalized $\chi^2_\nu$** vs odd/even FRC $\sigma^2_{\text{ref}}$, RMSE, Pearson $r$, pore-void leakage |
+| **T4: Multimodal Phase Segmentation** | `float32` XCT sub-volume | **T4a:** `Pore / Solid / Bead`<br>**T4b:** XRD-validated `Pore / Na-13X / Zn-13X` | Guard-banded 3D sub-volumes | Per-class Dice, Boundary F1 (`1, 2` vox), phase-fraction error, **OpenImpala** $D_{\text{eff}}, \tau$, SSA |
 
 ---
 
@@ -72,28 +72,33 @@ jupyter notebook Sinograms.ipynb
 
 ### 1. Inspect & Verify Zenodo Records (`configs/manifest.yaml`)
 
-> **Important Errata Note:** In the published *Scientific Data* paper body text, the reconstructed DIAD `0.54 µm` XCT link `10.5281/zenodo.13327988` returns HTTP 404. Use Reference 18's verified DOI **`10.5281/zenodo.13349402`** (`tomo_p4_astra_recon_gpu.h5`), mapped automatically in [`configs/manifest.yaml`](configs/manifest.yaml).
+> **Important Errata & Quantitative Data Note:**
+> 1. In the published *Scientific Data* paper body text, the reconstructed DIAD `0.54 µm` XCT link `10.5281/zenodo.13327988` returns HTTP 404. Use Reference 18's verified DOI **`10.5281/zenodo.13349402`** (`tomo_p4_astra_recon_gpu.h5`), mapped automatically in [`configs/manifest.yaml`](configs/manifest.yaml).
+> 2. The `500 MB` `8-bit` cropped sub-volumes (`10.5281/zenodo.14245751`) are suitable for geometric registration previews only; all quantitative pore thresholding and `OpenImpala` transport scoring must use the `32-bit float` reconstructed volumes (`12206815, 13327651, 13327682, 13327692, 13349402`). Do not download the `53–57 GB` HDF5 stacks to a local workstation—run Stage 0A-2 and Stage 0C directly on **SCARF** or **Hamilton** where Diamond's `mg32980-1` / `mg32980-2` archives or Lustre mirrors reside.
 
 ```bash
 # Download lightweight (<4 MB) powder XRD & reconstructed XRD-CT reference files and verify MD5s
 mmbench verify-manifest --manifest configs/manifest.yaml --cache-dir data/cache/zenodo --download-lightweight
 ```
 
-For the full `>50 GB` 32-bit reconstructed I13-2 XCT volumes, use `curl` with explicit output filenames:
-- `169065_recon.h5` — `0.325 µm` I13-2 XCT (`https://zenodo.org/records/13327692/files/tomo_p4_tomopy_recon.h5`)
-- `169066_recon.h5` — `0.8125 µm` I13-2 XCT (`https://zenodo.org/records/13327682/files/tomo_p4_tomopy_recon.h5`)
-- `169067_recon.h5` — `1.625 µm` I13-2 XCT (`https://zenodo.org/records/13327651/files/tomo_p4_tomopy_recon.h5`)
-- `169068_recon.h5` — `2.6 µm` I13-2 XCT (`https://zenodo.org/records/12206815/files/tomo_p4_tomopy_recon.h5`)
-- `k11_43334_recon.h5` — `0.54 µm` DIAD XCT (`https://zenodo.org/records/13349402/files/tomo_p4_astra_recon_gpu.h5`)
-
-### 2. Stage 0 Registration & Reference Noise Audit
+### 2. Stage 0 Registration & Reference Artefact Audit (SCARF / Hamilton Ready)
 
 ```bash
-# Audit powder XRD endmembers + 25 um / 50 um XRD-CT reference maps & reflection-subset noise floor
+# Stage 0A-1: Audit powder XRD endmembers + 25 um / 50 um XRD-CT reference maps & odd/even FRC artefact floor
 python -m registration.xrdct_reference --data-dir data/cache/zenodo --out-dir outputs/stage0_xrdct
 
-# Run Stage 0C bead-vs-pellet rigid & octant deformation audit (I13-2 <-> DIAD)
-python -m registration.cross_beamline_audit --help
+# Stage 0A-2 (run on SCARF/Hamilton): Stream-align 57 GB DIAD XCT <-> XRD-CT, check Astra flip_x chirality & raw /entry stage z
+python -m registration.diad_correlative \
+  --diad-xct-h5 /dls/k11/data/2024/mg32980-1/processing/tomo_p4_astra_recon_gpu.h5 \
+  --xrdct-dir data/cache/zenodo \
+  --dls-raw-nexus-dir /dls/k11/data/2024/mg32980-1/nexus \
+  --out-json outputs/stage0a_diad_correlative.json
+
+# Stage 0C (run on SCARF/Hamilton): Separate fiducial-vs-pellet 7-DOF slip & 2x2x2 octant deformation gate (Task T2)
+python -m registration.cross_beamline_audit \
+  --i13-h5 /dls/i13/data/2024/mg32980-2/processing/169067_tomo_p4_tomopy_recon.h5 \
+  --diad-h5 /dls/k11/data/2024/mg32980-1/processing/tomo_p4_astra_recon_gpu.h5 \
+  --out-yaml outputs/stage0c_cross_beamline_regions.yaml
 ```
 
 ### 3. Generate Leakage-Free Splits & Score a Submission

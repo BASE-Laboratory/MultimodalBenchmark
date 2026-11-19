@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import argparse
+import json
 from dataclasses import asdict, dataclass
-from typing import Dict, Optional, Tuple
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+import h5py
 import numpy as np
-from scipy.ndimage import affine_transform, gaussian_filter, uniform_filter1d
+from scipy.ndimage import affine_transform, gaussian_filter, percentile_filter, uniform_filter1d
 from scipy.optimize import minimize
 
 
@@ -225,3 +229,261 @@ def align_xrdct_slice_to_diad_xct(
         nmi_score=final_nmi,
         pearson_r=final_r,
     )
+
+
+def read_savu_or_zyx_slab(
+    h5_path: Path | str,
+    z0: int = 0,
+    z1: Optional[int] = None,
+    z_stride: int = 1,
+    yx_stride: int = 1,
+    dataset_path: Optional[str] = None,
+) -> Tuple[np.ndarray, Tuple[int, int, int], str]:
+    """Read a memory-safe (Z, Y, X) slab from either a Savu recon HDF5 (axis 1 = vertical Z) or standard (Z, Y, X) HDF5."""
+    candidates = (
+        [dataset_path]
+        if dataset_path is not None
+        else [
+            "4-AstraReconGpu-tomo/data",
+            "4-TomopyRecon-tomo/data",
+            "entry/final_result_tomo/data",
+            "data",
+        ]
+    )
+    with h5py.File(h5_path, "r") as fh:
+        ds_name: Optional[str] = None
+        for cand in candidates:
+            if cand and cand in fh and isinstance(fh[cand], h5py.Dataset):
+                ds_name = cand
+                break
+        if ds_name is None:
+            found: List[str] = []
+            fh.visititems(
+                lambda k, o: found.append(k) if isinstance(o, h5py.Dataset) and o.ndim == 3 else None
+            )
+            if not found:
+                raise KeyError(f"No 3D dataset found in {h5_path}")
+            ds_name = found[0]
+
+        ds = fh[ds_name]
+        s0, s1, s2 = [int(v) for v in ds.shape]
+        is_savu_xzy = ("AstraRecon" in ds_name) or ("TomopyRecon" in ds_name) or (s1 < s0 and s0 == s2)
+        if is_savu_xzy:
+            full_zyx = (s1, s2, s0)
+            z_end = full_zyx[0] if z1 is None else min(full_zyx[0], int(z1))
+            raw = np.asarray(ds[::yx_stride, z0:z_end:z_stride, ::yx_stride], dtype=np.float32)
+            vol_zyx = np.transpose(raw, (1, 2, 0)).copy()
+        else:
+            full_zyx = (s0, s1, s2)
+            z_end = full_zyx[0] if z1 is None else min(full_zyx[0], int(z1))
+            vol_zyx = np.asarray(ds[z0:z_end:z_stride, ::yx_stride, ::yx_stride], dtype=np.float32)
+
+    return vol_zyx, full_zyx, ds_name
+
+
+def read_dls_k11_raw_stage_z(
+    dls_raw_nexus_dir: Path | str,
+    scan_ids: Sequence[int] = (
+        43322,
+        43323,
+        43324,
+        43325,
+        43336,
+        43344,
+        43345,
+        43346,
+        43393,
+        43394,
+        43395,
+        43396,
+        43397,
+        43398,
+        43399,
+        43400,
+    ),
+) -> Dict[str, Any]:
+    """Read raw /entry stage height motors from /dls/k11/data/2024/mg32980-1/nexus/k11-*.nxs on SCARF/Diamond."""
+    ndir = Path(dls_raw_nexus_dir)
+    if not ndir.exists():
+        return {"available": False, "reason": f"Directory {ndir} not mounted in current environment."}
+
+    motor_candidates = [
+        "entry/diffraction/gts_y",
+        "entry/diffraction/gts_z",
+        "entry/diffraction/samy",
+        "entry/diffraction/sam_y",
+        "entry/instrument/gts/gts_y",
+        "entry/instrument/gts/gts_z",
+        "entry/before_scan/gts/gts_y",
+        "entry/before_scan/gts/gts_z",
+        "entry/before_scan/sample_stage/samy",
+    ]
+    per_scan: Dict[str, Dict[str, float]] = {}
+    for sid in scan_ids:
+        p = ndir / f"k11-{sid}.nxs"
+        if not p.exists():
+            continue
+        vals: Dict[str, float] = {}
+        with h5py.File(p, "r") as fh:
+            for mpath in motor_candidates:
+                if mpath in fh and isinstance(fh[mpath], h5py.Dataset):
+                    arr = np.asarray(fh[mpath][()], dtype=np.float64)
+                    if arr.size > 0 and np.all(np.isfinite(arr)):
+                        vals[mpath] = float(np.mean(arr))
+            if not vals and "entry" in fh:
+                def _scan_scalars(name: str, obj: Any) -> None:
+                    if isinstance(obj, h5py.Dataset) and obj.size <= 4 and obj.dtype.kind in "fi":
+                        if any(tok in name.lower() for tok in ("gts", "sam", "stage", "kb", "height", "_y", "_z")):
+                            arr = np.asarray(obj[()], dtype=np.float64)
+                            if arr.size > 0 and np.all(np.isfinite(arr)):
+                                vals[f"entry/{name}"] = float(np.mean(arr))
+
+                fh["entry"].visititems(_scan_scalars)
+        per_scan[str(sid)] = vals
+
+    return {"available": bool(per_scan), "dls_raw_nexus_dir": str(ndir), "scans": per_scan}
+
+
+def _reconstruct_total_bragg_slice_from_nxs(
+    nxs_path: Path,
+    apply_50um_theta_offset_deg: float = 0.0,
+) -> Tuple[np.ndarray, float]:
+    from .xrdct_reference import estimate_conjugate_cor, reconstruct_sinogram_2d
+
+    with h5py.File(nxs_path, "r") as fh:
+        q = np.squeeze(fh["processed/result/q"][:])
+        d = np.squeeze(fh["processed/result/data"][:])
+        th = np.squeeze(fh["processed/result/gts_cs_theta"][:]) + float(apply_50um_theta_offset_deg)
+        kb_x = np.squeeze(fh["processed/result/kb_cs_x"][:])
+    q_ax = [i for i, s in enumerate(d.shape) if s == q.size][0]
+    d = np.moveaxis(d, q_ax, 0)
+    if d.shape[1] < d.shape[2]:
+        d = np.swapaxes(d, 1, 2)
+    qmask = (q >= 0.85) & (q <= 3.10)
+    sub = d[qmask].astype(np.float64)
+    bg = percentile_filter(sub, percentile=15, size=(45, 1, 1))
+    bragg_sino = np.sum(np.clip(sub - bg, 0.0, None), axis=0)
+    cor = estimate_conjugate_cor(bragg_sino, th)
+    rec = reconstruct_sinogram_2d(bragg_sino, th, center_px=cor.center_px)
+    return rec, float(np.mean(kb_x))
+
+
+def run_diad_correlative_cli_audit(
+    diad_xct_h5: Path,
+    xrdct_dir: Path,
+    out_json: Path,
+    qc_png: Optional[Path] = None,
+    dls_raw_nexus_dir: Optional[Path] = None,
+    dataset_path: Optional[str] = None,
+    xct_voxel_um: float = 0.54,
+    z_stride: int = 4,
+    yx_stride: int = 2,
+) -> Dict[str, Any]:
+    """Stream-downsample DIAD 0.54 um XCT HDF5 and align 25 um & 50 um XRD-CT slices testing both x-chiralities."""
+    xct_sub, full_zyx, ds_name = read_savu_or_zyx_slab(
+        diad_xct_h5, z0=0, z1=None, z_stride=z_stride, yx_stride=yx_stride, dataset_path=dataset_path
+    )
+    eff_yx_vox_um = xct_voxel_um * yx_stride
+    eff_z_vox_um = xct_voxel_um * z_stride
+
+    # Calibrated kb_cs_x center is 1280.50 px in full 2560-px DIAD coordinates; scale if file is smaller test volume
+    scale_x = full_zyx[2] / 2560.0
+    scale_y = full_zyx[1] / 2560.0
+    fov_center_sub = (
+        0.5 * (xct_sub.shape[1] - 1) if abs(scale_y - 1.0) > 0.1 else (1280.5 / yx_stride),
+        0.5 * (xct_sub.shape[2] - 1) if abs(scale_x - 1.0) > 0.1 else (1280.5 / yx_stride),
+    )
+
+    results_25um: Dict[str, Any] = {}
+    first_pair_vis: Optional[Tuple[np.ndarray, np.ndarray, str]] = None
+
+    for sid in (43322, 43323, 43324, 43325):
+        p25 = xrdct_dir / f"k11-{sid}-diffraction-DiffInt_Mask_Azz_Txt.nxs"
+        if not p25.exists():
+            continue
+        rec25, _ = _reconstruct_total_bragg_slice_from_nxs(p25, apply_50um_theta_offset_deg=0.0)
+        blurred_25 = blur_xct_to_xrdct_grid(
+            xct_sub,
+            xct_voxel_um=eff_yx_vox_um,
+            xrd_pixel_um=25.0,
+            beam_thickness_um=25.0 * (eff_yx_vox_um / eff_z_vox_um),
+            target_yx_shape=rec25.shape,
+            fov_center_yx_vox=fov_center_sub,
+        )
+        aln = align_xrdct_slice_to_diad_xct(
+            xrd_total_yx=rec25,
+            blurred_xct_zyx=blurred_25,
+            xct_voxel_um=eff_z_vox_um,
+            xrd_pixel_um=25.0,
+            test_both_chiralities=True,
+        )
+        d = aln.to_dict()
+        d["best_full_xct_z_vox"] = round(aln.best_z_center_vox * z_stride, 2)
+        results_25um[str(sid)] = d
+        if first_pair_vis is None:
+            iz = int(np.clip(round(aln.best_z_center_vox), 0, blurred_25.shape[0] - 1))
+            sl = np.fliplr(blurred_25[iz]) if aln.flip_x else blurred_25[iz]
+            warped = _warp_2d_similarity(sl, aln.shift_yx_xrd_px[0], aln.shift_yx_xrd_px[1], aln.rotation_deg, aln.scale)
+            first_pair_vis = (rec25, warped, f"k11-{sid} (flip_x={aln.flip_x}, r={aln.pearson_r:.3f})")
+
+    raw_stage_meta = (
+        read_dls_k11_raw_stage_z(dls_raw_nexus_dir)
+        if dls_raw_nexus_dir is not None
+        else {"available": False, "reason": "--dls-raw-nexus-dir not specified"}
+    )
+
+    if qc_png is not None and first_pair_vis is not None:
+        from .cross_beamline_audit import save_checkerboard_qc_png
+
+        save_checkerboard_qc_png(first_pair_vis[0], first_pair_vis[1], qc_png, tile_px=4)
+
+    payload: Dict[str, Any] = {
+        "diad_xct_h5": str(diad_xct_h5),
+        "dataset_path": ds_name,
+        "full_volume_shape_zyx": list(full_zyx),
+        "stream_strides_zyx": [z_stride, yx_stride, yx_stride],
+        "scans_25um_alignment": results_25um,
+        "dls_raw_nexus_stage_z_audit": raw_stage_meta,
+    }
+    out_json.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_json, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2)
+    return payload
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Stage 0A-2: Correlative DIAD 0.54 um XCT <-> 25/50 um XRD-CT chirality & z-height alignment."
+    )
+    parser.add_argument("--diad-xct-h5", type=Path, required=True, help="Path to tomo_p4_astra_recon_gpu.h5")
+    parser.add_argument("--xrdct-dir", type=Path, default=Path("data/cache/zenodo"), help="Directory with k11-*.nxs")
+    parser.add_argument(
+        "--dls-raw-nexus-dir",
+        type=Path,
+        default=Path("/dls/k11/data/2024/mg32980-1/nexus"),
+        help="Optional Diamond/SCARF raw NeXus directory containing /entry vertical stage motor positions.",
+    )
+    parser.add_argument("--dataset-path", type=str, default=None, help="Optional HDF5 dataset path override.")
+    parser.add_argument("--z-stride", type=int, default=4, help="Axial stride when streaming 57 GB HDF5 (default: 4).")
+    parser.add_argument("--yx-stride", type=int, default=2, help="In-plane stride when streaming 57 GB HDF5 (default: 2).")
+    parser.add_argument("--out-json", type=Path, default=Path("outputs/stage0a_diad_correlative.json"))
+    parser.add_argument("--qc-png", type=Path, default=Path("outputs/stage0a_diad_correlative_qc.png"))
+    args = parser.parse_args(argv)
+
+    rep = run_diad_correlative_cli_audit(
+        diad_xct_h5=args.diad_xct_h5,
+        xrdct_dir=args.xrdct_dir,
+        out_json=args.out_json,
+        qc_png=args.qc_png,
+        dls_raw_nexus_dir=args.dls_raw_nexus_dir,
+        dataset_path=args.dataset_path,
+        z_stride=args.z_stride,
+        yx_stride=args.yx_stride,
+    )
+    print(json.dumps(rep, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+

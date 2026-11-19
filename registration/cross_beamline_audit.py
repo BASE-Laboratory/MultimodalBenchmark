@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import argparse
+import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import yaml
-from scipy.ndimage import binary_erosion
+from scipy.ndimage import binary_dilation, binary_erosion, gaussian_filter
+from scipy.signal import fftconvolve
 
+from .diad_correlative import read_savu_or_zyx_slab
 from .i13_ladder import (
     LadderRegistrationResult,
     SimilarityTransform3D,
@@ -315,3 +319,208 @@ def run_stage0c_pellet_vs_fiducial_audit(
         certified_octant_count=n_cert,
         phase_cnr_zn_vs_na=cnr_val,
     )
+
+
+def auto_segment_fiducial_and_pellet_masks(
+    vol_zyx: np.ndarray,
+    voxel_um: float,
+    guard_um: float = 20.0,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Automatically segment strictly disjoint fiducial (capillary wall + homogeneous spheres) and porous pellet masks."""
+    from scipy.ndimage import label as nd_label
+
+    vol_f = vol_zyx.astype(np.float32)
+    sig = max(1.5, 6.0 / float(voxel_um))
+    lmean = gaussian_filter(vol_f, sigma=sig)
+    lvar = np.maximum(gaussian_filter((vol_f - lmean) ** 2, sigma=sig), 0.0)
+    lstd = np.sqrt(lvar)
+
+    air_p20 = float(np.percentile(lmean, 20.0))
+    solid_p90 = float(np.percentile(lmean, 90.0))
+    contrast = max(solid_p90 - air_p20, 1e-5)
+    fg = lmean > air_p20 + 0.20 * contrast
+    std_med = float(np.percentile(lstd[fg], 50.0)) if np.any(fg) else float(np.median(lstd))
+
+    # 1. Z-invariant cylindrical capillary wall: bright median along Z with small Z interquartile variation
+    z_med = np.median(vol_f, axis=0)
+    z_iqr = np.percentile(vol_f, 85.0, axis=0) - np.percentile(vol_f, 15.0, axis=0)
+    cap_wall_2d = (z_med > air_p20 + 0.22 * contrast) & (z_iqr < 0.45 * contrast)
+    cap_wall_3d = np.broadcast_to(cap_wall_2d[None, :, :], vol_f.shape)
+
+    # 2. Homogeneous dense spheres/beads (ruby sphere + NIST borosilicate beads)
+    homog_spheres = (lmean > air_p20 + 0.28 * contrast) & (lstd <= std_med * 0.92)
+    fid_core = cap_wall_3d | homog_spheres
+    fid_edges = binary_dilation(fid_core, iterations=max(1, int(round(8.0 / voxel_um))))
+
+    # 3. Textured macroporous catalyst fragment (kept as largest connected component away from fiducials)
+    guard_iters = max(1, int(round(guard_um / voxel_um)))
+    pellet_raw = (lmean > air_p20 + 0.15 * contrast) & (lstd > std_med * 1.05) & (~binary_dilation(fid_core, iterations=guard_iters))
+    lbl, n_cc = nd_label(pellet_raw)
+    if n_cc > 0:
+        counts = np.bincount(lbl.ravel())
+        counts[0] = 0
+        pellet_core = lbl == int(np.argmax(counts))
+    else:
+        pellet_core = pellet_raw
+
+    pellet_clean = binary_dilation(pellet_core, iterations=max(1, int(round(8.0 / voxel_um)))) & (
+        ~binary_dilation(fid_core, iterations=guard_iters)
+    )
+    fid_clean = fid_edges & (~binary_dilation(pellet_clean, iterations=guard_iters))
+
+    if int(np.count_nonzero(pellet_clean)) < 32:
+        pellet_clean = (lmean > air_p20 + 0.15 * contrast) & (lstd > std_med * 1.05)
+    if int(np.count_nonzero(fid_clean)) < 32:
+        fid_clean = fid_core & (~pellet_clean)
+
+    return fid_clean.astype(np.uint8), pellet_clean.astype(np.uint8)
+
+
+def _locate_best_3d_overlap_and_chirality(
+    diad_zyx: np.ndarray,
+    i13_zyx: np.ndarray,
+    test_flip_x: bool = True,
+) -> Tuple[bool, Tuple[int, int, int], float]:
+    """Find whether DIAD x-axis is mirrored relative to I13-2 and locate DIAD's center inside I13-2 via 3D FFT NCC."""
+    d_hp = diad_zyx - gaussian_filter(diad_zyx, sigma=5.0)
+    i_hp = i13_zyx - gaussian_filter(i13_zyx, sigma=5.0)
+
+    dz, dy, dx = d_hp.shape
+    tz = min(i_hp.shape[0] - 2, max(8, int(dz * 0.65) // 2 * 2))
+    ty = min(i_hp.shape[1] - 2, max(8, int(dy * 0.65) // 2 * 2))
+    tx = min(i_hp.shape[2] - 2, max(8, int(dx * 0.65) // 2 * 2))
+    z0, y0, x0 = (dz - tz) // 2, (dy - ty) // 2, (dx - tx) // 2
+
+    i_zero = i_hp - float(np.mean(i_hp))
+    ones = np.ones((tz, ty, tx), dtype=np.float32)
+    i_sq = fftconvolve(i_zero * i_zero, ones, mode="valid")
+    i_m = fftconvolve(i_zero, ones, mode="valid") / float(ones.size)
+    den = np.sqrt(np.maximum(i_sq - ones.size * (i_m * i_m), 1e-6)) * np.sqrt(float(ones.size))
+
+    best = (-2.0, False, (i13_zyx.shape[0] // 2, i13_zyx.shape[1] // 2, i13_zyx.shape[2] // 2))
+    flips = (False, True) if test_flip_x else (False,)
+    for fx in flips:
+        cand = d_hp[:, :, ::-1] if fx else d_hp
+        tmpl = cand[z0 : z0 + tz, y0 : y0 + ty, x0 : x0 + tx]
+        tmpl = (tmpl - float(np.mean(tmpl))) / (float(np.std(tmpl)) + 1e-8)
+        ncc = fftconvolve(i_zero, tmpl[::-1, ::-1, ::-1], mode="valid") / den
+        bz, by, bx = [int(v) for v in np.unravel_index(np.argmax(ncc), ncc.shape)]
+        pk = float(ncc[bz, by, bx])
+        if pk > best[0]:
+            cz = int(round(bz + 0.5 * tz))
+            cy = int(round(by + 0.5 * ty))
+            cx = int(round(bx + 0.5 * tx))
+            best = (pk, fx, (cz, cy, cx))
+    return best[1], best[2], best[0]
+
+
+def run_cross_beamline_cli_audit(
+    i13_h5: Path,
+    diad_h5: Path,
+    out_yaml: Path,
+    qc_png: Optional[Path] = None,
+    i13_voxel_um: float = 1.625,
+    diad_voxel_um: float = 0.54,
+    i13_stride: int = 2,
+    diad_stride: int = 6,
+    slip_threshold_um: float = 1.5,
+    octant_cert_threshold_um: float = 1.0,
+) -> Dict[str, Any]:
+    """Stream-downsample 53 GB I13-2 & 57 GB DIAD HDF5 stacks, resolve x-chirality, and run Stage 0C slip/octant audit."""
+    diad_sub, diad_full_zyx, diad_ds = read_savu_or_zyx_slab(
+        diad_h5, z0=0, z1=None, z_stride=diad_stride, yx_stride=diad_stride
+    )
+    i13_sub, i13_full_zyx, i13_ds = read_savu_or_zyx_slab(
+        i13_h5, z0=0, z1=None, z_stride=i13_stride, yx_stride=i13_stride
+    )
+    d_vox = diad_voxel_um * diad_stride
+    i_vox = i13_voxel_um * i13_stride
+
+    flip_x, i13_center_zyx, ncc_peak = (
+        _locate_best_3d_overlap_and_chirality(diad_sub, i13_sub, test_flip_x=True)
+        if (i13_sub.shape[0] > diad_sub.shape[0] + 4 and i13_sub.shape[1] > diad_sub.shape[1] + 4)
+        else (False, (i13_sub.shape[0] // 2, i13_sub.shape[1] // 2, i13_sub.shape[2] // 2), 1.0)
+    )
+    if flip_x:
+        diad_sub = diad_sub[:, :, ::-1].copy()
+
+    # Crop i13_sub around located overlap center to match DIAD physical span (+10% margin)
+    hz = min(i13_sub.shape[0] // 2, int(round(0.55 * diad_sub.shape[0] * d_vox / i_vox)))
+    hy = min(i13_sub.shape[1] // 2, int(round(0.55 * diad_sub.shape[1] * d_vox / i_vox)))
+    hx = min(i13_sub.shape[2] // 2, int(round(0.55 * diad_sub.shape[2] * d_vox / i_vox)))
+    cz = int(np.clip(i13_center_zyx[0], hz, i13_sub.shape[0] - hz))
+    cy = int(np.clip(i13_center_zyx[1], hy, i13_sub.shape[1] - hy))
+    cx = int(np.clip(i13_center_zyx[2], hx, i13_sub.shape[2] - hx))
+    i13_crop = i13_sub[cz - hz : cz + hz, cy - hy : cy + hy, cx - hx : cx + hx].copy()
+
+    fid_mask, pel_mask = auto_segment_fiducial_and_pellet_masks(diad_sub, voxel_um=d_vox)
+    report = run_stage0c_pellet_vs_fiducial_audit(
+        diad_zyx=diad_sub,
+        i13_zyx=i13_crop,
+        diad_spacing_zyx_um=(d_vox, d_vox, d_vox),
+        i13_spacing_zyx_um=(i_vox, i_vox, i_vox),
+        diad_fiducial_mask_zyx=fid_mask,
+        diad_pellet_mask_zyx=pel_mask,
+        slip_threshold_um=slip_threshold_um,
+        octant_cert_threshold_um=octant_cert_threshold_um,
+        min_octant_voxels=max(16, int(pel_mask.sum()) // 64),
+        qc_png_path=qc_png,
+    )
+
+    out_yaml.parent.mkdir(parents=True, exist_ok=True)
+    report.save_certified_regions_yaml(out_yaml)
+
+    # Append HDF5 provenance & chirality metadata to exported YAML
+    with open(out_yaml, "r", encoding="utf-8") as fh:
+        saved = yaml.safe_load(fh)
+    saved["provenance"] = {
+        "i13_h5": str(i13_h5),
+        "i13_dataset": i13_ds,
+        "i13_full_shape_zyx": list(i13_full_zyx),
+        "diad_h5": str(diad_h5),
+        "diad_dataset": diad_ds,
+        "diad_full_shape_zyx": list(diad_full_zyx),
+        "diad_astra_flip_x_detected": bool(flip_x),
+        "coarse_3d_fft_ncc_peak": round(float(ncc_peak), 4),
+        "i13_overlap_center_sub_zyx": list(i13_center_zyx),
+    }
+    with open(out_yaml, "w", encoding="utf-8") as fh:
+        yaml.safe_dump(saved, fh, sort_keys=False)
+    return saved
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Stage 0C: Cross-beamline (I13-2 <-> DIAD) fiducial-vs-pellet slip & 2x2x2 octant audit."
+    )
+    parser.add_argument("--i13-h5", type=Path, required=True, help="Path to 169067 (1.625 um) Savu/HDF5 volume.")
+    parser.add_argument("--diad-h5", type=Path, required=True, help="Path to k11-43334 (0.54 um) DIAD Savu/HDF5 volume.")
+    parser.add_argument("--i13-voxel-um", type=float, default=1.625)
+    parser.add_argument("--diad-voxel-um", type=float, default=0.54)
+    parser.add_argument("--i13-stride", type=int, default=2, help="Stream stride on I13-2 volume (default: 2 -> 3.25 um).")
+    parser.add_argument("--diad-stride", type=int, default=6, help="Stream stride on DIAD volume (default: 6 -> 3.24 um).")
+    parser.add_argument("--slip-threshold-um", type=float, default=1.5)
+    parser.add_argument("--octant-threshold-um", type=float, default=1.0)
+    parser.add_argument("--out-yaml", type=Path, default=Path("outputs/stage0c_cross_beamline_regions.yaml"))
+    parser.add_argument("--qc-png", type=Path, default=Path("outputs/stage0c_cross_beamline_qc.png"))
+    args = parser.parse_args(argv)
+
+    summary = run_cross_beamline_cli_audit(
+        i13_h5=args.i13_h5,
+        diad_h5=args.diad_h5,
+        out_yaml=args.out_yaml,
+        qc_png=args.qc_png,
+        i13_voxel_um=args.i13_voxel_um,
+        diad_voxel_um=args.diad_voxel_um,
+        i13_stride=args.i13_stride,
+        diad_stride=args.diad_stride,
+        slip_threshold_um=args.slip_threshold_um,
+        octant_cert_threshold_um=args.octant_threshold_um,
+    )
+    print(json.dumps(summary, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+

@@ -160,3 +160,109 @@ def test_stage0c_detects_intra_capillary_pellet_slip_and_exports_yaml(tmp_path: 
     loaded = yaml.safe_load(cert_yaml.read_text())
     assert loaded["pellet_moved_inside_capillary"] is True
     assert compute_phase_cnr(diad, zn_mask, na_mask) >= 0.0
+
+
+def test_fit_calibration_sphere_3d_recovers_scale_on_border_clipped_sphere() -> None:
+    """Verify 3D radial-normal Cauchy sphere fitter recovers sub-voxel radius even when clipped by a crop border."""
+    from scipy.ndimage import gaussian_filter
+
+    from registration.i13_ladder import fit_calibration_sphere_3d
+
+    shape = (80, 96, 96)
+    zz, yy, xx = np.indices(shape, dtype=np.float32)
+    # Place sphere near y=86 so y > 95 is clipped by the border, and add an adjacent non-radial wall at x > 68
+    cz, cy, cx, true_r_vox = 40.25, 76.4, 38.6, 26.5
+    dist = np.sqrt((zz - cz) ** 2 + (yy - cy) ** 2 + (xx - cx) ** 2)
+    vol = 60.0 + 35.0 * (dist <= true_r_vox).astype(np.float32)
+    vol[:, :, 70:75] = 92.0  # distracting flat wall
+    vol = gaussian_filter(vol, sigma=1.1)
+
+    res = fit_calibration_sphere_3d(
+        vol,
+        nominal_voxel_um=2.0,
+        seed_center_zyx_vox=(40.0, 76.0, 39.0),
+        reference_diameter_um=104.0,  # true voxel = 104 / (2 * 26.5) = 1.96226 um (-1.89%)
+        border_margin_vox=6,
+        smooth_sigma_vox=1.0,
+    )
+    assert abs(res.radius_vox - true_r_vox) < 0.35
+    assert res.sphericity_rmse_vox < 0.35
+    assert abs(res.calibrated_voxel_um - (104.0 / (2.0 * true_r_vox))) < 0.03
+
+
+def test_savu_hdf5_cli_entrypoints_for_scarf_and_hamilton(tmp_path: Path) -> None:
+    """Verify diad_correlative.main and cross_beamline_audit.main stream Savu (X, Z, Y) HDF5 files cleanly."""
+    import h5py
+
+    from registration.cross_beamline_audit import main as stage0c_main
+    from registration.diad_correlative import main as stage0a_main, read_dls_k11_raw_stage_z
+
+    # Build synthetic (Z=32, Y=40, X=40) volume and save in Savu (X, Z, Y) = (40, 32, 40) layout!
+    zz, yy, xx = np.indices((32, 40, 40), dtype=np.float32)
+    pel = (15.0 * np.exp(-0.5 * ((zz - 16) ** 2 + (yy - 20) ** 2 + (xx - 22) ** 2) / 25.0)).astype(np.float32)
+    # Add textured pores inside pellet + homogeneous sphere fiducial
+    pores = (4.0 * np.sin(zz * 1.3) * np.cos(yy * 1.1) * (pel > 4.0)).astype(np.float32)
+    fid = (22.0 * (((zz - 9) ** 2 + (yy - 10) ** 2 + (xx - 10) ** 2) <= 25.0)).astype(np.float32)
+    vol_zyx = 50.0 + pel + pores + fid
+
+    diad_h5 = tmp_path / "tomo_p4_astra_recon_gpu.h5"
+    i13_h5 = tmp_path / "169067_recon.h5"
+    # Savu layout stores (X, Z, Y) so np.transpose(raw, (1, 2, 0)) -> (Z, Y, X)
+    savu_xzy = np.transpose(vol_zyx, (2, 0, 1))
+    with h5py.File(diad_h5, "w") as f:
+        f.create_dataset("4-AstraReconGpu-tomo/data", data=savu_xzy)
+    with h5py.File(i13_h5, "w") as f:
+        f.create_dataset("4-TomopyRecon-tomo/data", data=savu_xzy)
+
+    # Synthetic raw DLS K11 NeXus file with /entry/diffraction/gts_y
+    raw_nxs_dir = tmp_path / "dls_nexus"
+    raw_nxs_dir.mkdir()
+    with h5py.File(raw_nxs_dir / "k11-43324.nxs", "w") as f:
+        f.create_dataset("entry/diffraction/gts_y", data=np.array([12.45]))
+    z_meta = read_dls_k11_raw_stage_z(raw_nxs_dir, scan_ids=(43324,))
+    assert z_meta["available"] is True
+    assert abs(z_meta["scans"]["43324"]["entry/diffraction/gts_y"] - 12.45) < 1e-6
+
+    out_json = tmp_path / "correlative.json"
+    rc_a = stage0a_main(
+        [
+            "--diad-xct-h5",
+            str(diad_h5),
+            "--xrdct-dir",
+            str(tmp_path),
+            "--dls-raw-nexus-dir",
+            str(raw_nxs_dir),
+            "--z-stride",
+            "1",
+            "--yx-stride",
+            "1",
+            "--out-json",
+            str(out_json),
+        ]
+    )
+    assert rc_a == 0 and out_json.exists()
+
+    out_yaml = tmp_path / "stage0c.yaml"
+    qc_png = tmp_path / "stage0c_qc.png"
+    rc_c = stage0c_main(
+        [
+            "--i13-h5",
+            str(i13_h5),
+            "--diad-h5",
+            str(diad_h5),
+            "--i13-voxel-um",
+            "1.0",
+            "--diad-voxel-um",
+            "1.0",
+            "--i13-stride",
+            "1",
+            "--diad-stride",
+            "1",
+            "--out-yaml",
+            str(out_yaml),
+            "--qc-png",
+            str(qc_png),
+        ]
+    )
+    assert rc_c == 0 and out_yaml.exists() and qc_png.exists()
+

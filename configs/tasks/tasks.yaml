@@ -4,39 +4,60 @@ tasks:
   t1:
     name: "T1: Multi-Magnification Synchrotron XCT Super-Resolution"
     beamline: "DLS I13-2"
-    input_modality: "3D XCT (float32)"
-    target_modality: "3D XCT (float32)"
+    input_modality: "3D XCT (32-bit float; 8-bit Zenodo 14245751 sub-volumes are for registration preview only)"
+    target_modality: "3D XCT (32-bit float required for pore thresholding and OpenImpala transport scoring)"
+    resampling_note: >
+      Resampling between ladder rungs MUST apply the fitted 7-DOF similarity transforms rather than nominal integer/half-integer
+      ratios. Independent 3D metrology on the 500 um ruby calibration sphere shows Turrets [1] 1.25x (2.5945 um) and [2] 2x
+      (1.6212 um, 500 um LuAG scintillators) sit within -0.23% of nominal, whereas Turret [4] 4x (0.8006 um, 100 um LuAG:Ce)
+      sits -1.47% below nominal 0.8125 um, making the nominal "2x" step a true ~2.026x magnification step.
     tracks:
       1p6x:
         lr_scan: "169068"
         lr_voxel_um: 2.6
+        calibrated_lr_voxel_um: 2.5945
         hr_scan: "169067"
         hr_voxel_um: 1.625
-        scale_factor: 1.6
+        calibrated_hr_voxel_um: 1.6212
+        nominal_scale_factor: 1.6
+        fitted_scale_ratio: 1.6039
       2x:
         lr_scan: "169067"
         lr_voxel_um: 1.625
+        calibrated_lr_voxel_um: 1.6212
         hr_scan: "169066"
         hr_voxel_um: 0.8125
-        scale_factor: 2.0
+        calibrated_hr_voxel_um: 0.8006
+        nominal_scale_factor: 2.0
+        fitted_scale_ratio: 2.0258
       2p5x:
         lr_scan: "169066"
         lr_voxel_um: 0.8125
+        calibrated_lr_voxel_um: 0.8006
         hr_scan: "169065"
         hr_voxel_um: 0.325
-        scale_factor: 2.5
+        calibrated_hr_voxel_um: 0.3211
+        nominal_scale_factor: 2.5
+        fitted_scale_ratio: 2.4934
       5x:
         lr_scan: "169067"
         lr_voxel_um: 1.625
+        calibrated_lr_voxel_um: 1.6212
         hr_scan: "169065"
         hr_voxel_um: 0.325
-        scale_factor: 5.0
+        calibrated_hr_voxel_um: 0.3211
+        nominal_scale_factor: 5.0
+        fitted_scale_ratio: 5.0511
       8x:
         lr_scan: "169068"
         lr_voxel_um: 2.6
+        calibrated_lr_voxel_um: 2.5945
         hr_scan: "169065"
         hr_voxel_um: 0.325
-        scale_factor: 8.0
+        calibrated_hr_voxel_um: 0.3211
+        nominal_scale_factor: 8.0
+        fitted_scale_ratio: 8.1014
+        transform_composition: "chained_adjacent_7dof_only"
     required_keys: ["pred"]
     primary_metrics: ["psnr_db", "ssim", "fsc_0p5_cyc_per_vox", "d_eff_rel_err", "tortuosity_rel_err"]
 
@@ -57,13 +78,53 @@ tasks:
     name: "T3: Correlative Multimodal Chemical Super-Resolution / Fusion"
     beamline: "DLS K11 (DIAD)"
     input_modalities: ["0.54 um DIAD XCT", "50 um DIAD XRD-CT (Zn-13X & Na-13X, +47.5 deg gts_cs_theta corrected)"]
-    target_modality: "25 um DIAD XRD-CT ROI Slices (Continuum-Subtracted, q-Calibrated Zn-13X & Na-13X)"
+    target_modality: "25 um DIAD XRD-CT Reference Slices (Sparse 40x80 Sampling; Continuum-Subtracted, q-Calibrated Zn-13X & Na-13X)"
     held_out_test_scans_25um: [43322, 43323, 43324, 43325]
     paired_50um_scans:
-      43324: {scan_50um: 43345, z_index: 9, zn_phase_fraction: 0.991, projections_25um: 80}
-      43322: {scan_50um: 43395, z_index: 14, zn_phase_fraction: 0.624, projections_25um: 79}
-      43323: {scan_50um: 43398, z_index: 17, zn_phase_fraction: 0.252, projections_25um: 80}
-      43325: {scan_50um: 43399, z_index: 18, zn_phase_fraction: 0.096, projections_25um: 80}
+      43324:
+        scan_50um: 43345
+        z_index: 9
+        zn_phase_fraction: 0.991
+        projections_25um: 80
+        sino_800ray_r: 0.9912
+        zn_frc0p5_res_um: 63.0
+        halfmap_rms_pct_p95: 0.82
+        streak_rms_pct_p95: 6.07
+        in_pellet_na_zn_r: -0.022
+      43322:
+        scan_50um: 43395
+        z_index: 14
+        zn_phase_fraction: 0.624
+        projections_25um: 79
+        sino_800ray_r: 0.9903
+        zn_frc0p5_res_um: 61.4
+        halfmap_rms_pct_p95: 2.04
+        streak_rms_pct_p95: 10.73
+        in_pellet_na_zn_r: -0.813
+      43323:
+        scan_50um: 43398
+        z_index: 17
+        zn_phase_fraction: 0.252
+        projections_25um: 80
+        sino_800ray_r: 0.9793
+        zn_frc0p5_res_um: 68.2
+        halfmap_rms_pct_p95: 3.04
+        streak_rms_pct_p95: 5.58
+        in_pellet_na_zn_r: -0.675
+      43325:
+        scan_50um: 43399
+        z_index: 18
+        zn_phase_fraction: 0.096
+        projections_25um: 80
+        sino_800ray_r: 0.9756
+        zn_frc0p5_res_um: 61.7
+        halfmap_rms_pct_p95: 3.49
+        streak_rms_pct_p95: 1.90
+        in_pellet_na_zn_r: -0.608
+    slice_matching_note: >
+      Zenodo 13329639 exports DAWN /processed groups only (kb_cs_y fixed at 1080.0 px; raw /entry vertical stage motor lies in
+      /dls/k11/data/2024/mg32980-1/nexus/k11-43322..43401.nxs on Diamond/SCARF). Pairing is established via 800-ray Bragg +
+      doublet sinogram correlation across neighboring slices and can be verified from /entry metadata via diad_correlative.py.
     axial_z_guard_band_um: 100.0
     required_keys: ["zn", "na"]
     primary_metrics: ["mean_reduced_chi2", "mean_rmse", "mean_pearson_r", "mean_ssim", "t3b_pore_leakage_rel"]

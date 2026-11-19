@@ -640,6 +640,394 @@
       "frame0_asymmetric_sinogram_pearson_r": 0.99463,
       "kb_cs_x_center_diad_xct_px": 1280.5,
       "kb_cs_x_span_um": 975.0
+    },
+    "slice_matching_800ray_sinogram_audit": {
+      "43324": {
+        "dawn_date": "2024-05-02T14:56+01:00",
+        "dls_raw_nexus_path": "/dls/k11/data/2024/mg32980-1/nexus/k11-43324.nxs",
+        "kb_cs_y_px": 1080.0,
+        "best_z_index": 9,
+        "best_50um_scan": 43345,
+        "best_combined_sino_r": 0.9912,
+        "neighbor_margin_delta_r": 0.0052,
+        "neighbor_correlations": {
+          "z00_43336": {
+            "z_index": 0,
+            "scan_50um": 43336,
+            "r_bragg_sino": 0.1336,
+            "r_doublet_sino": -0.0597
+          },
+          "z08_43344": {
+            "z_index": 8,
+            "scan_50um": 43344,
+            "r_bragg_sino": 0.9938,
+            "r_doublet_sino": 0.9782
+          },
+          "z09_43345": {
+            "z_index": 9,
+            "scan_50um": 43345,
+            "r_bragg_sino": 0.9964,
+            "r_doublet_sino": 0.9859
+          },
+          "z10_43346": {
+            "z_index": 10,
+            "scan_50um": 43346,
+            "r_bragg_sino": 0.9869,
+            "r_doublet_sino": 0.976
+          },
+          "z12_43393": {
+            "z_index": 12,
+            "scan_50um": 43393,
+            "r_bragg_sino": 0.9311,
+            "r_doublet_sino": 0.8783
+          },
+          "z13_43394": {
+            "z_index": 13,
+            "scan_50um": 43394,
+            "r_bragg_sino": 0.8922,
+            "r_doublet_sino": 0.8114
+          },
+          "z14_43395": {
+            "z_index": 14,
+            "scan_50um": 43395,
+            "r_bragg_sino": 0.8369,
+            "r_doublet_sino": 0.7162
+          },
+          "z15_43396": {
+            "z_index": 15,
+            "scan_50um": 43396,
+            "r_bragg_sino": 0.7782,
+            "r_doublet_sino": 0.6245
+          },
+          "z16_43397": {
+            "z_index": 16,
+            "scan_50um": 43397,
+            "r_bragg_sino": 0.6924,
+            "r_doublet_sino": 0.507
+          },
+          "z17_43398": {
+            "z_index": 17,
+            "scan_50um": 43398,
+            "r_bragg_sino": 0.5834,
+            "r_doublet_sino": 0.3744
+          },
+          "z18_43399": {
+            "z_index": 18,
+            "scan_50um": 43399,
+            "r_bragg_sino": 0.5126,
+            "r_doublet_sino": 0.3919
+          },
+          "z19_43400": {
+            "z_index": 19,
+            "scan_50um": 43400,
+            "r_bragg_sino": 0.5884,
+            "r_doublet_sino": 0.5867
+          }
+        }
+      },
+      "43322": {
+        "dawn_date": "2024-05-01T20:59+01:00",
+        "dls_raw_nexus_path": "/dls/k11/data/2024/mg32980-1/nexus/k11-43322.nxs",
+        "kb_cs_y_px": 1080.0,
+        "best_z_index": 14,
+        "best_50um_scan": 43395,
+        "best_combined_sino_r": 0.9903,
+        "neighbor_margin_delta_r": 0.018,
+        "neighbor_correlations": {
+          "z00_43336": {
+            "z_index": 0,
+            "scan_50um": 43336,
+            "r_bragg_sino": -0.0476,
+            "r_doublet_sino": -0.1873
+          },
+          "z08_43344": {
+            "z_index": 8,
+            "scan_50um": 43344,
+            "r_bragg_sino": 0.8201,
+            "r_doublet_sino": 0.6291
+          },
+          "z09_43345": {
+            "z_index": 9,
+            "scan_50um": 43345,
+            "r_bragg_sino": 0.8373,
+            "r_doublet_sino": 0.6693
+          },
+          "z10_43346": {
+            "z_index": 10,
+            "scan_50um": 43346,
+            "r_bragg_sino": 0.8614,
+            "r_doublet_sino": 0.7277
+          },
+          "z12_43393": {
+            "z_index": 12,
+            "scan_50um": 43393,
+            "r_bragg_sino": 0.9247,
+            "r_doublet_sino": 0.8558
+          },
+          "z13_43394": {
+            "z_index": 13,
+            "scan_50um": 43394,
+            "r_bragg_sino": 0.9718,
+            "r_doublet_sino": 0.9486
+          },
+          "z14_43395": {
+            "z_index": 14,
+            "scan_50um": 43395,
+            "r_bragg_sino": 0.9958,
+            "r_doublet_sino": 0.9848
+          },
+          "z15_43396": {
+            "z_index": 15,
+            "scan_50um": 43396,
+            "r_bragg_sino": 0.9859,
+            "r_doublet_sino": 0.9588
+          },
+          "z16_43397": {
+            "z_index": 16,
+            "scan_50um": 43397,
+            "r_bragg_sino": 0.9287,
+            "r_doublet_sino": 0.8454
+          },
+          "z17_43398": {
+            "z_index": 17,
+            "scan_50um": 43398,
+            "r_bragg_sino": 0.8211,
+            "r_doublet_sino": 0.6699
+          },
+          "z18_43399": {
+            "z_index": 18,
+            "scan_50um": 43399,
+            "r_bragg_sino": 0.7152,
+            "r_doublet_sino": 0.5922
+          },
+          "z19_43400": {
+            "z_index": 19,
+            "scan_50um": 43400,
+            "r_bragg_sino": 0.6919,
+            "r_doublet_sino": 0.574
+          }
+        }
+      },
+      "43323": {
+        "dawn_date": "2024-05-02T05:46+01:00",
+        "dls_raw_nexus_path": "/dls/k11/data/2024/mg32980-1/nexus/k11-43323.nxs",
+        "kb_cs_y_px": 1080.0,
+        "best_z_index": 17,
+        "best_50um_scan": 43398,
+        "best_combined_sino_r": 0.9792,
+        "neighbor_margin_delta_r": 0.014,
+        "neighbor_correlations": {
+          "z00_43336": {
+            "z_index": 0,
+            "scan_50um": 43336,
+            "r_bragg_sino": -0.0943,
+            "r_doublet_sino": -0.0712
+          },
+          "z08_43344": {
+            "z_index": 8,
+            "scan_50um": 43344,
+            "r_bragg_sino": 0.6235,
+            "r_doublet_sino": 0.3364
+          },
+          "z09_43345": {
+            "z_index": 9,
+            "scan_50um": 43345,
+            "r_bragg_sino": 0.6356,
+            "r_doublet_sino": 0.3677
+          },
+          "z10_43346": {
+            "z_index": 10,
+            "scan_50um": 43346,
+            "r_bragg_sino": 0.6573,
+            "r_doublet_sino": 0.4065
+          },
+          "z12_43393": {
+            "z_index": 12,
+            "scan_50um": 43393,
+            "r_bragg_sino": 0.7217,
+            "r_doublet_sino": 0.5192
+          },
+          "z13_43394": {
+            "z_index": 13,
+            "scan_50um": 43394,
+            "r_bragg_sino": 0.7859,
+            "r_doublet_sino": 0.6217
+          },
+          "z14_43395": {
+            "z_index": 14,
+            "scan_50um": 43395,
+            "r_bragg_sino": 0.8459,
+            "r_doublet_sino": 0.7268
+          },
+          "z15_43396": {
+            "z_index": 15,
+            "scan_50um": 43396,
+            "r_bragg_sino": 0.9097,
+            "r_doublet_sino": 0.8458
+          },
+          "z16_43397": {
+            "z_index": 16,
+            "scan_50um": 43397,
+            "r_bragg_sino": 0.9758,
+            "r_doublet_sino": 0.9547
+          },
+          "z17_43398": {
+            "z_index": 17,
+            "scan_50um": 43398,
+            "r_bragg_sino": 0.9853,
+            "r_doublet_sino": 0.9732
+          },
+          "z18_43399": {
+            "z_index": 18,
+            "scan_50um": 43399,
+            "r_bragg_sino": 0.9088,
+            "r_doublet_sino": 0.8935
+          },
+          "z19_43400": {
+            "z_index": 19,
+            "scan_50um": 43400,
+            "r_bragg_sino": 0.749,
+            "r_doublet_sino": 0.5788
+          }
+        }
+      },
+      "43325": {
+        "dawn_date": "2024-05-02T23:50+01:00",
+        "dls_raw_nexus_path": "/dls/k11/data/2024/mg32980-1/nexus/k11-43325.nxs",
+        "kb_cs_y_px": 1080.0,
+        "best_z_index": 18,
+        "best_50um_scan": 43399,
+        "best_combined_sino_r": 0.9757,
+        "neighbor_margin_delta_r": 0.0254,
+        "neighbor_correlations": {
+          "z00_43336": {
+            "z_index": 0,
+            "scan_50um": 43336,
+            "r_bragg_sino": -0.076,
+            "r_doublet_sino": -0.0375
+          },
+          "z08_43344": {
+            "z_index": 8,
+            "scan_50um": 43344,
+            "r_bragg_sino": 0.5313,
+            "r_doublet_sino": 0.3012
+          },
+          "z09_43345": {
+            "z_index": 9,
+            "scan_50um": 43345,
+            "r_bragg_sino": 0.5396,
+            "r_doublet_sino": 0.3324
+          },
+          "z10_43346": {
+            "z_index": 10,
+            "scan_50um": 43346,
+            "r_bragg_sino": 0.5565,
+            "r_doublet_sino": 0.3613
+          },
+          "z12_43393": {
+            "z_index": 12,
+            "scan_50um": 43393,
+            "r_bragg_sino": 0.6082,
+            "r_doublet_sino": 0.441
+          },
+          "z13_43394": {
+            "z_index": 13,
+            "scan_50um": 43394,
+            "r_bragg_sino": 0.6626,
+            "r_doublet_sino": 0.5047
+          },
+          "z14_43395": {
+            "z_index": 14,
+            "scan_50um": 43395,
+            "r_bragg_sino": 0.7146,
+            "r_doublet_sino": 0.5828
+          },
+          "z15_43396": {
+            "z_index": 15,
+            "scan_50um": 43396,
+            "r_bragg_sino": 0.7797,
+            "r_doublet_sino": 0.6922
+          },
+          "z16_43397": {
+            "z_index": 16,
+            "scan_50um": 43397,
+            "r_bragg_sino": 0.8739,
+            "r_doublet_sino": 0.8309
+          },
+          "z17_43398": {
+            "z_index": 17,
+            "scan_50um": 43398,
+            "r_bragg_sino": 0.9628,
+            "r_doublet_sino": 0.9377
+          },
+          "z18_43399": {
+            "z_index": 18,
+            "scan_50um": 43399,
+            "r_bragg_sino": 0.9847,
+            "r_doublet_sino": 0.9666
+          },
+          "z19_43400": {
+            "z_index": 19,
+            "scan_50um": 43400,
+            "r_bragg_sino": 0.8263,
+            "r_doublet_sino": 0.672
+          }
+        }
+      }
+    },
+    "reference_25um_artefact_floor": {
+      "43324": {
+        "projections": 80,
+        "sampling_grid": "40 trans x 80 proj",
+        "cor_px": 19.454,
+        "zn_frc_0p5_cyc_px": 0.3968,
+        "zn_effective_res_um": 63.0,
+        "na_frc_0p5_cyc_px": 0.179,
+        "na_effective_res_um": 139.7,
+        "halfmap_rms_uncertainty_pct_of_p95": 0.82,
+        "outside_capillary_streak_rms_pct_of_p95": 6.07,
+        "in_pellet_na_zn_corr": -0.0073,
+        "zn_phase_fraction": 0.9935
+      },
+      "43322": {
+        "projections": 79,
+        "sampling_grid": "40 trans x 79 proj",
+        "cor_px": 19.5602,
+        "zn_frc_0p5_cyc_px": 0.4073,
+        "zn_effective_res_um": 61.39,
+        "na_frc_0p5_cyc_px": 0.3911,
+        "na_effective_res_um": 63.92,
+        "halfmap_rms_uncertainty_pct_of_p95": 2.04,
+        "outside_capillary_streak_rms_pct_of_p95": 10.73,
+        "in_pellet_na_zn_corr": -0.8012,
+        "zn_phase_fraction": 0.6224
+      },
+      "43323": {
+        "projections": 80,
+        "sampling_grid": "40 trans x 80 proj",
+        "cor_px": 19.62,
+        "zn_frc_0p5_cyc_px": 0.3664,
+        "zn_effective_res_um": 68.24,
+        "na_frc_0p5_cyc_px": 0.3916,
+        "na_effective_res_um": 63.84,
+        "halfmap_rms_uncertainty_pct_of_p95": 3.04,
+        "outside_capillary_streak_rms_pct_of_p95": 5.58,
+        "in_pellet_na_zn_corr": -0.6581,
+        "zn_phase_fraction": 0.2202
+      },
+      "43325": {
+        "projections": 80,
+        "sampling_grid": "40 trans x 80 proj",
+        "cor_px": 19.6043,
+        "zn_frc_0p5_cyc_px": 0.4051,
+        "zn_effective_res_um": 61.72,
+        "na_frc_0p5_cyc_px": 0.3322,
+        "na_effective_res_um": 75.25,
+        "halfmap_rms_uncertainty_pct_of_p95": 3.49,
+        "outside_capillary_streak_rms_pct_of_p95": 1.9,
+        "in_pellet_na_zn_corr": -0.6455,
+        "zn_phase_fraction": 0.0085
+      }
     }
   },
   "stage0b_i13_ladder": {
@@ -1006,7 +1394,7 @@
         "pearson_r_3dof_structural": 0.3245,
         "pearson_r_7dof_structural": 0.3139
       },
-      "four_rung_loop_closure": {
+      "four_rung_registration_self_consistency": {
         "chained_offset_65_in_68_zyx_um": [
           -485.23,
           -69.55,
@@ -1020,7 +1408,237 @@
         "coarse_translation_closure_norm_um": 3.64,
         "chained_scale_product_68_to_65": 0.98748,
         "direct_fitted_scale_68_to_65": 0.96335,
-        "scale_loop_closure_diff_pct": 2.413
+        "scale_loop_closure_diff_pct": 2.413,
+        "interpretation": "Pairwise-vs-direct registration self-consistency (~1.4 coarse voxels); does NOT by itself prove absence of sample slip, which is instead tested via raw NeXus stage motors, disjoint fiducial-vs-pellet 7-DOF offsets, and 2x2x2 octant drift."
+      }
+    },
+    "nexus_stage_and_turret_metadata": {
+      "169065": {
+        "title": "Zn13X-15_10x",
+        "experiment_identifier": "mg32980-2",
+        "start_time": "2024-04-15T12:22:40.807+01",
+        "end_time": "2024-04-15T13:32:25.299+01",
+        "turret_name": "[5] 10x 25um GGG:Eu S025",
+        "focus_mm": 10.150004032,
+        "translate_x_mm": 479.389,
+        "cs1_x_mm": 77.3928,
+        "cs1_y_mm": 3.0,
+        "cs1_z_mm": -880.0,
+        "ss1_samplex_um": 600.0,
+        "ss1_sampley_um": 1600.0,
+        "ss1_samplez_um": -2250.0,
+        "ss1_X_mm": 1.9004,
+        "ss1_Y_mm": 2.5028,
+        "ss1_Z_mm": 0.00056,
+        "ss1_pitch_deg": 0.063041178784,
+        "ss1_roll_deg": -0.68656008257,
+        "detector_distance_mm": 30.0,
+        "nominal_pixel_size_um": 0.325
+      },
+      "169066": {
+        "title": "Zn13X-15_4x",
+        "experiment_identifier": "mg32980-2",
+        "start_time": "2024-04-15T14:07:14.516+01",
+        "end_time": "2024-04-15T14:16:56.475+01",
+        "turret_name": "[4] 4x 100um LuAG:Ce S012",
+        "focus_mm": 10.600005,
+        "translate_x_mm": 489.391,
+        "cs1_x_mm": 77.4276,
+        "cs1_y_mm": 3.0,
+        "cs1_z_mm": -880.0,
+        "ss1_samplex_um": 600.0,
+        "ss1_sampley_um": 1600.0,
+        "ss1_samplez_um": -2250.0,
+        "ss1_X_mm": 1.90036,
+        "ss1_Y_mm": 2.5024,
+        "ss1_Z_mm": 0.00058,
+        "ss1_pitch_deg": 0.063041178784,
+        "ss1_roll_deg": -0.68656008257,
+        "detector_distance_mm": 30.0,
+        "nominal_pixel_size_um": 0.8125
+      },
+      "169067": {
+        "title": "Zn13X-15_2x",
+        "experiment_identifier": "mg32980-2",
+        "start_time": "2024-04-15T14:23:53.461+01",
+        "end_time": "2024-04-15T14:27:01.025+01",
+        "turret_name": "[2] 2x 500um LuAG S014",
+        "focus_mm": 9.250002096,
+        "translate_x_mm": 489.39,
+        "cs1_x_mm": 77.4724,
+        "cs1_y_mm": 3.0,
+        "cs1_z_mm": -880.0,
+        "ss1_samplex_um": 600.0,
+        "ss1_sampley_um": 1600.0,
+        "ss1_samplez_um": -2250.0,
+        "ss1_X_mm": 1.90036,
+        "ss1_Y_mm": 2.5024,
+        "ss1_Z_mm": 0.00056,
+        "ss1_pitch_deg": 0.063041178784,
+        "ss1_roll_deg": -0.68656008257,
+        "detector_distance_mm": 30.0,
+        "nominal_pixel_size_um": 1.625
+      },
+      "169068": {
+        "title": "Zn13X-15_125x",
+        "experiment_identifier": "mg32980-2",
+        "start_time": "2024-04-15T14:30:12.014+01",
+        "end_time": "2024-04-15T14:41:56.777+01",
+        "turret_name": "[1] 1.25x 500um LuAG:Ce",
+        "focus_mm": 8.250002488,
+        "translate_x_mm": 489.39,
+        "cs1_x_mm": 77.6392,
+        "cs1_y_mm": 3.0,
+        "cs1_z_mm": -880.0,
+        "ss1_samplex_um": 600.0,
+        "ss1_sampley_um": 1600.0,
+        "ss1_samplez_um": -2250.0,
+        "ss1_X_mm": 1.90036,
+        "ss1_Y_mm": 2.5024,
+        "ss1_Z_mm": 0.00058,
+        "ss1_pitch_deg": 0.063041178784,
+        "ss1_roll_deg": -0.68656008257,
+        "detector_distance_mm": 30.0,
+        "nominal_pixel_size_um": 2.6
+      }
+    },
+    "ruby_sphere_500um_absolute_scale_audit": {
+      "sphere_fits": {
+        "169068": {
+          "center_zyx_vox": [
+            90.49986840598176,
+            614.6042462430146,
+            413.522532750324
+          ],
+          "radius_vox": 96.3585821679706,
+          "diameter_vox": 192.7171643359412,
+          "nominal_voxel_um": 2.6,
+          "apparent_diameter_nominal_um": 501.0646272734471,
+          "calibrated_voxel_um": 2.5944757008172283,
+          "voxel_scale_error_pct": -0.2124730454912238,
+          "sphericity_rmse_vox": 0.19556860962289468,
+          "sphericity_rmse_um": 0.5073980055092107,
+          "num_surface_points": 25000
+        },
+        "169067": {
+          "center_zyx_vox": [
+            133.52978754736444,
+            680.8416450578356,
+            359.81424412244644
+          ],
+          "radius_vox": 154.2024988773987,
+          "diameter_vox": 308.4049977547974,
+          "nominal_voxel_um": 1.625,
+          "apparent_diameter_nominal_um": 501.1581213515458,
+          "calibrated_voxel_um": 1.6212448035538432,
+          "voxel_scale_error_pct": -0.23108901207119503,
+          "sphericity_rmse_vox": 0.13904007546754996,
+          "sphericity_rmse_um": 0.22541799983749955,
+          "num_surface_points": 25000
+        },
+        "169066": {
+          "center_zyx_vox": [
+            188.68180252743437,
+            910.2156311901784,
+            161.01727413527783
+          ],
+          "radius_vox": 312.2673891978255,
+          "diameter_vox": 624.534778395651,
+          "nominal_voxel_um": 0.8125,
+          "apparent_diameter_nominal_um": 507.4345074464664,
+          "calibrated_voxel_um": 0.8005959272347255,
+          "voxel_scale_error_pct": -1.4651166480337818,
+          "sphericity_rmse_vox": 0.6787308404103416,
+          "sphericity_rmse_um": 0.5433891465211219,
+          "num_surface_points": 25000
+        }
+      },
+      "scale_ratios": {
+        "rung1_169068_to_169067": {
+          "nominal_ratio": 1.6,
+          "sphere_radius_ratio": 1.6003,
+          "pellet_7dof_scale_ratio": 1.6039,
+          "agreement_pct": -0.224
+        },
+        "rung2_169067_to_169066": {
+          "nominal_ratio": 2.0,
+          "sphere_radius_ratio": 2.02505,
+          "pellet_7dof_scale_ratio": 2.02579,
+          "agreement_pct": -0.037
+        },
+        "span_169068_to_169066": {
+          "nominal_ratio": 3.2,
+          "sphere_radius_ratio": 3.24068,
+          "pellet_7dof_scale_ratio": 3.24916,
+          "agreement_pct": -0.261
+        },
+        "rung3_169066_to_169065": {
+          "nominal_ratio": 2.5,
+          "pellet_7dof_scale_ratio": 2.49339,
+          "implied_169065_calibrated_voxel_um": 0.32109,
+          "implied_169065_scale_error_pct": -1.204
+        },
+        "span_5x_169067_to_169065_true_ratio": 5.05109,
+        "span_8x_169068_to_169065_true_ratio": 8.10142
+      }
+    },
+    "i13_fiducial_vs_pellet_slip_and_octant_audit": {
+      "rung1_169068_to_169067": {
+        "fiducial_voxels": 1112114,
+        "pellet_voxels": 1684716,
+        "fiducial_scale": 1.00003,
+        "pellet_scale": 1.00799,
+        "pellet_vs_fiducial_slip_um": 3.042,
+        "pellet_tx_predicted_vs_measured_ruby_sphere_um": 4.639,
+        "mean_octant_drift_um": 3.082,
+        "max_octant_drift_um": 4.23,
+        "num_octants_evaluated": 7,
+        "octant_drifts_um": [
+          4.23,
+          3.603,
+          2.847,
+          2.731,
+          2.245,
+          3.534,
+          2.385
+        ]
+      },
+      "rung2_169067_to_169066": {
+        "fiducial_voxels": 2140923,
+        "pellet_voxels": 5291744,
+        "fiducial_scale": 0.98614,
+        "pellet_scale": 0.99223,
+        "pellet_vs_fiducial_slip_um": 1.882,
+        "pellet_tx_predicted_vs_measured_ruby_sphere_um": 3.127,
+        "mean_octant_drift_um": 2.473,
+        "max_octant_drift_um": 3.313,
+        "num_octants_evaluated": 7,
+        "octant_drifts_um": [
+          2.659,
+          3.313,
+          2.176,
+          3.034,
+          2.501,
+          1.246,
+          2.384
+        ]
+      },
+      "rung3_169066_to_169065": {
+        "note": "Interior local-tomography pellet ROI (no exterior capillary wall or ruby sphere inside 325 um FOV); evaluated via 2x2x2 octant local rigid drift.",
+        "global_scale": 1.00369,
+        "mean_octant_drift_um": 0.195,
+        "max_octant_drift_um": 0.344,
+        "num_octants_evaluated": 8,
+        "octant_drifts_um": [
+          0.133,
+          0.275,
+          0.344,
+          0.173,
+          0.158,
+          0.203,
+          0.146,
+          0.124
+        ]
       }
     }
   }
