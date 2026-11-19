@@ -37,9 +37,9 @@ MultimodalBenchmark/
 
 | Task | Input | Ground Truth | Evaluation Region | Key Metrics |
 |---|---|---|---|---|
-| **T1: Multi-Magnification XCT Super-Resolution** | Real lower-res I13-2 XCT (`2×`: `1.625→0.8125 µm`, `2.5×`: `0.8125→0.325 µm`, `5×`: `1.625→0.325 µm`, `8×`: `2.6→0.325 µm`) | Paired higher-res I13-2 XCT | Certified non-cupping overlap sub-volumes | Cupping-invariant PSNR/SSIM, Edge MTF50, **3D FSC (`0.5`)**, frozen-threshold **OpenImpala** $D_{\text{eff}}, \tau$ |
+| **T1: Multi-Magnification XCT Super-Resolution** | Real lower-res I13-2 XCT (`1.6×`: `2.6→1.625 µm`, `2×`: `1.625→0.8125 µm`, `2.5×`: `0.8125→0.325 µm`, `5×`: `1.625→0.325 µm`, `8×`: `2.6→0.325 µm`) | Paired higher-res I13-2 XCT | Certified non-cupping overlap sub-volumes | Cupping-invariant PSNR/SSIM, Edge MTF50, **3D FSC (`0.5`)**, frozen-threshold **OpenImpala** $D_{\text{eff}}, \tau$ |
 | **T2: Cross-Beamline XCT Super-Resolution** | I13-2 `1.625 µm` XCT | DIAD `0.54 µm` XCT (`3.009×`) | Stage-0C certified rigid pellet sub-volumes | Same as T1 (gated on Stage 0C TRE threshold) |
-| **T3: Correlative Chemical Super-Resolution / Fusion** | DIAD `0.54 µm` XCT + `50 µm` XRD-CT (`20 × 20`) | Measured `25 µm` Zn/Na XRD-CT maps (**T3a**) + HR physical consistency (**T3b**) | Held-out `25 µm` ROI slices (`±100 µm` z-guard) | **Noise-normalized $\chi^2_\nu$** vs odd/even FRC $\sigma^2_{\text{ref}}$, RMSE, Pearson $r$, pore-void leakage |
+| **T3: Correlative Chemical Super-Resolution / Fusion** | DIAD `0.54 µm` XCT + `+47.5°`-corrected `50 µm` XRD-CT (`20 × 20`) | Measured continuum-subtracted `25 µm` Zn/Na XRD-CT maps (**T3a**, 4 slices: `43322–43325`) + HR physical consistency (**T3b**) | 4 held-out `25 µm` ROI slices (`±100 µm` z-guard) | **Noise-normalized $\chi^2_\nu$** vs odd/even FRC $\sigma^2_{\text{ref}}$, RMSE, Pearson $r$, pore-void leakage |
 | **T4: Multimodal Phase Segmentation** | XCT sub-volume | **T4a:** `Pore / Solid / Bead`<br>**T4b:** XRD-validated `Pore / Na-13X / Zn-13X` | Guard-banded 3D sub-volumes | Per-class Dice, Boundary F1 (`1, 2` vox), phase-fraction error, **OpenImpala** $D_{\text{eff}}, \tau$, SSA |
 
 ---

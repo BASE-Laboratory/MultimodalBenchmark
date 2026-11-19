@@ -48,17 +48,18 @@ errata_notes:
     gts_cs_theta_50um_deg: [-47.5, 312.5]
     legacy_50um_correction_deg: 47.5
     matched_50um_indices_for_25um:
-      "43324": {"index": 9, "scan_id": 43345, "zn_na_ratio_25um": 2.597, "zn_na_ratio_50um": 2.641}
-      "43322": {"index": 14, "scan_id": 43395, "zn_na_ratio_25um": 0.901, "zn_na_ratio_50um": 0.988}
-      "43323": {"index": 17, "scan_id": 43398, "zn_na_ratio_25um": 0.686, "zn_na_ratio_50um": 0.682}
-      "43325": {"index": 18, "scan_id": 43399, "zn_na_ratio_25um": 0.731, "zn_na_ratio_50um": 0.772}
+      "43324": {"index": 9, "scan_id": 43345, "zn_phase_fraction_calibrated": 0.991, "zn_na_ratio_legacy": 2.597}
+      "43322": {"index": 14, "scan_id": 43395, "zn_phase_fraction_calibrated": 0.624, "zn_na_ratio_legacy": 0.901}
+      "43323": {"index": 17, "scan_id": 43398, "zn_phase_fraction_calibrated": 0.252, "zn_na_ratio_legacy": 0.686}
+      "43325": {"index": 18, "scan_id": 43399, "zn_phase_fraction_calibrated": 0.096, "zn_na_ratio_legacy": 0.731}
     note: >
       Between k11-43325 (25 um) and k11-43336 (50 um), the gts_cs_theta soft-motor zero was shifted by -47.5 deg
       while keeping the physical sample start orientation identical (mean-subtracted sinogram r = 0.9956 between
       k11-43324 and k11-43345 at frame 0). Passing gts_cs_theta directly to tomopy.recon rotated all published
       output_43336..43400_{na,zn}.nxs slices by -47.5 deg relative to the 25 um ROI maps. Furthermore, kb_cs_x
       spans [377.72, 2183.28] DIAD 0.54 um XCT pixels (center 1280.50 px, span 975.0 um -> 25.00 um step at 40
-      translations, 51.316 um step at 20 translations).
+      translations, 51.316 um step at 20 translations), and Rigaku Cu-Ka powder references exhibit a -0.00125 A^-1
+      zero-point q-shift relative to the DIAD Pilatus3X CdTe q-grid.
 
 sample_fiducials:
   capillary:

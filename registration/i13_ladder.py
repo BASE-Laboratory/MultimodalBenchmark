@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import SimpleITK as sitk
-from scipy.ndimage import label as nd_label
+from scipy.ndimage import center_of_mass, label as nd_label
 from scipy.spatial import cKDTree
 from skimage.filters import threshold_otsu
 
@@ -153,13 +153,13 @@ def extract_feature_centroids_xyz_um(
 
     sz, sy, sx = spacing_zyx_um
     oz, oy, ox = origin_zyx_um
-    centroids: List[Tuple[float, float, float]] = []
-    for lbl in valid_labels[:250]:
-        zz, yy, xx = np.where(labeled == lbl)
-        cx = ox + float(np.mean(xx)) * sx
-        cy = oy + float(np.mean(yy)) * sy
-        cz = oz + float(np.mean(zz)) * sz
-        centroids.append((cx, cy, cz))
+    coms_zyx = center_of_mass(binary, labeled, valid_labels[:250])
+    if isinstance(coms_zyx, tuple):
+        coms_zyx = [coms_zyx]
+    centroids: List[Tuple[float, float, float]] = [
+        (ox + float(cx) * sx, oy + float(cy) * sy, oz + float(cz) * sz)
+        for cz, cy, cx in coms_zyx
+    ]
     return np.asarray(centroids, dtype=np.float64)
 
 
@@ -225,7 +225,10 @@ def register_3d_similarity(
         reg.SetMetricAsMattesMutualInformation(numberOfHistogramBins=int(histogram_bins))
 
     reg.SetMetricSamplingStrategy(reg.REGULAR)
-    reg.SetMetricSamplingPercentage(float(sampling_percentage), seed=42)
+    eff_pct = float(sampling_percentage)
+    if fixed_zyx.size > 1_000_000:
+        eff_pct = min(eff_pct, max(0.015, 120_000.0 / float(fixed_zyx.size)))
+    reg.SetMetricSamplingPercentage(eff_pct, seed=42)
     reg.SetInterpolator(sitk.sitkLinear)
 
     if fixed_mask_zyx is not None:

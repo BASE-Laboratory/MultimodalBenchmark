@@ -7,6 +7,12 @@ tasks:
     input_modality: "3D XCT (float32)"
     target_modality: "3D XCT (float32)"
     tracks:
+      1p6x:
+        lr_scan: "169068"
+        lr_voxel_um: 2.6
+        hr_scan: "169067"
+        hr_voxel_um: 1.625
+        scale_factor: 1.6
       2x:
         lr_scan: "169067"
         lr_voxel_um: 1.625
@@ -50,9 +56,14 @@ tasks:
   t3:
     name: "T3: Correlative Multimodal Chemical Super-Resolution / Fusion"
     beamline: "DLS K11 (DIAD)"
-    input_modalities: ["0.54 um DIAD XCT", "50 um DIAD XRD-CT (Zn-13X & Na-13X)"]
-    target_modality: "25 um DIAD XRD-CT ROI Slices (Zn-13X & Na-13X)"
+    input_modalities: ["0.54 um DIAD XCT", "50 um DIAD XRD-CT (Zn-13X & Na-13X, +47.5 deg gts_cs_theta corrected)"]
+    target_modality: "25 um DIAD XRD-CT ROI Slices (Continuum-Subtracted, q-Calibrated Zn-13X & Na-13X)"
     held_out_test_scans_25um: [43322, 43323, 43324, 43325]
+    paired_50um_scans:
+      43324: {scan_50um: 43345, z_index: 9, zn_phase_fraction: 0.991, projections_25um: 80}
+      43322: {scan_50um: 43395, z_index: 14, zn_phase_fraction: 0.624, projections_25um: 79}
+      43323: {scan_50um: 43398, z_index: 17, zn_phase_fraction: 0.252, projections_25um: 80}
+      43325: {scan_50um: 43399, z_index: 18, zn_phase_fraction: 0.096, projections_25um: 80}
     axial_z_guard_band_um: 100.0
     required_keys: ["zn", "na"]
     primary_metrics: ["mean_reduced_chi2", "mean_rmse", "mean_pearson_r", "mean_ssim", "t3b_pore_leakage_rel"]

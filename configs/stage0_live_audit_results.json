@@ -695,6 +695,24 @@
           1000
         ],
         "dtype": "uint8"
+      },
+      "169068": {
+        "dataset": "data",
+        "shape": [
+          500,
+          1000,
+          1000
+        ],
+        "dtype": "uint8"
+      },
+      "169065": {
+        "dataset": "data",
+        "shape": [
+          500,
+          1000,
+          1000
+        ],
+        "dtype": "uint8"
       }
     },
     "t1_2x_live_registration_and_baselines": {
@@ -790,6 +808,219 @@
           "percolates_all_axes_pred": 1.0,
           "percolates_all_axes_ref": 1.0
         }
+      }
+    },
+    "four_rung_8bit_registration_and_loop_closure": {
+      "rung_1p6x_169068_to_169067": {
+        "pair": "169068 (2.6 um) -> 169067 (1.625 um)",
+        "nominal_scale_ratio": 1.6,
+        "coarse_fft": {
+          "ncc_peak": 0.609,
+          "center_in_lo_zyx_vox": [
+            164,
+            502,
+            502
+          ],
+          "offset_from_geom_center_zyx_um": [
+            -223.6,
+            5.2,
+            5.2
+          ]
+        },
+        "fitted_scale_factor": 0.99757,
+        "magnification_drift_pct": -0.243,
+        "fine_rotation_rad": [
+          -0.00046,
+          9e-05,
+          0.00063
+        ],
+        "fine_translation_xyz_um": [
+          -0.97,
+          -0.355,
+          -1.926
+        ],
+        "evaluated_fov_zyx_um": [
+          250.2,
+          500.5,
+          500.5
+        ],
+        "pearson_r_naive_geom_xy": 0.2665,
+        "pearson_r_3dof_raw": 0.4848,
+        "pearson_r_7dof_raw": 0.4855,
+        "pearson_r_3dof_structural": 0.7819,
+        "pearson_r_7dof_structural": 0.7831
+      },
+      "rung_2x_169067_to_169066": {
+        "pair": "169067 (1.625 um) -> 169066 (0.8125 um)",
+        "nominal_scale_ratio": 2.0,
+        "coarse_fft": {
+          "ncc_peak": 0.4187,
+          "center_in_lo_zyx_vox": [
+            164,
+            478,
+            526
+          ],
+          "offset_from_geom_center_zyx_um": [
+            -139.75,
+            -35.75,
+            42.25
+          ]
+        },
+        "fitted_scale_factor": 0.98727,
+        "magnification_drift_pct": -1.273,
+        "fine_rotation_rad": [
+          -0.00088,
+          -0.001,
+          -0.00064
+        ],
+        "fine_translation_xyz_um": [
+          0.837,
+          0.013,
+          1.859
+        ],
+        "evaluated_fov_zyx_um": [
+          208.0,
+          416.0,
+          416.0
+        ],
+        "pearson_r_naive_geom_xy": 0.0673,
+        "pearson_r_3dof_raw": 0.3448,
+        "pearson_r_7dof_raw": 0.4905,
+        "pearson_r_3dof_structural": 0.6632,
+        "pearson_r_7dof_structural": 0.8305
+      },
+      "rung_2p5x_169066_to_169065": {
+        "pair": "169066 (0.8125 um) -> 169065 (0.325 um)",
+        "nominal_scale_ratio": 2.5,
+        "coarse_fft": {
+          "ncc_peak": 0.2935,
+          "center_in_lo_zyx_vox": [
+            100,
+            452,
+            752
+          ],
+          "offset_from_geom_center_zyx_um": [
+            -121.88,
+            -39.0,
+            204.75
+          ]
+        },
+        "fitted_scale_factor": 1.00265,
+        "magnification_drift_pct": 0.265,
+        "fine_rotation_rad": [
+          5e-05,
+          -5e-05,
+          -0.00021
+        ],
+        "fine_translation_xyz_um": [
+          0.841,
+          0.48,
+          -0.176
+        ],
+        "evaluated_fov_zyx_um": [
+          62.4,
+          166.4,
+          166.4
+        ],
+        "pearson_r_naive_geom_xy": -0.0005,
+        "pearson_r_3dof_raw": 0.4076,
+        "pearson_r_7dof_raw": 0.4158,
+        "pearson_r_3dof_structural": 0.5104,
+        "pearson_r_7dof_structural": 0.5196
+      },
+      "span_5x_169067_to_169065": {
+        "pair": "169067 (1.625 um) -> 169065 (0.325 um)",
+        "nominal_scale_ratio": 5.0,
+        "coarse_fft": {
+          "ncc_peak": 0.2076,
+          "center_in_lo_zyx_vox": [
+            93,
+            455,
+            651
+          ],
+          "offset_from_geom_center_zyx_um": [
+            -255.12,
+            -73.12,
+            245.38
+          ]
+        },
+        "fitted_scale_factor": 0.98926,
+        "magnification_drift_pct": -1.074,
+        "fine_rotation_rad": [
+          -0.00016,
+          -0.00066,
+          -0.00022
+        ],
+        "fine_translation_xyz_um": [
+          -1.217,
+          0.706,
+          4.052
+        ],
+        "evaluated_fov_zyx_um": [
+          62.4,
+          166.4,
+          166.4
+        ],
+        "pearson_r_naive_geom_xy": -0.0063,
+        "pearson_r_3dof_raw": 0.2206,
+        "pearson_r_7dof_raw": 0.2966,
+        "pearson_r_3dof_structural": 0.451,
+        "pearson_r_7dof_structural": 0.5716
+      },
+      "span_8x_169068_to_169065": {
+        "pair": "169068 (2.6 um) -> 169065 (0.325 um)",
+        "nominal_scale_ratio": 8.0,
+        "coarse_fft": {
+          "ncc_peak": 0.1518,
+          "center_in_lo_zyx_vox": [
+            64,
+            474,
+            596
+          ],
+          "offset_from_geom_center_zyx_um": [
+            -483.6,
+            -67.6,
+            249.6
+          ]
+        },
+        "fitted_scale_factor": 0.96335,
+        "magnification_drift_pct": -3.665,
+        "fine_rotation_rad": [
+          0.00097,
+          -0.00285,
+          0.00474
+        ],
+        "fine_translation_xyz_um": [
+          0.09,
+          0.285,
+          1.743
+        ],
+        "evaluated_fov_zyx_um": [
+          62.4,
+          166.4,
+          166.4
+        ],
+        "pearson_r_naive_geom_xy": -0.0098,
+        "pearson_r_3dof_raw": 0.0696,
+        "pearson_r_7dof_raw": 0.0664,
+        "pearson_r_3dof_structural": 0.3245,
+        "pearson_r_7dof_structural": 0.3139
+      },
+      "four_rung_loop_closure": {
+        "chained_offset_65_in_68_zyx_um": [
+          -485.23,
+          -69.55,
+          252.2
+        ],
+        "direct_offset_65_in_68_zyx_um": [
+          -483.6,
+          -67.6,
+          249.6
+        ],
+        "coarse_translation_closure_norm_um": 3.64,
+        "chained_scale_product_68_to_65": 0.98748,
+        "direct_fitted_scale_68_to_65": 0.96335,
+        "scale_loop_closure_diff_pct": 2.413
       }
     }
   }
