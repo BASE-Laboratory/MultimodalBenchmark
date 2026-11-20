@@ -49,9 +49,9 @@ registration = [
 transport = [
   "openimpala>=4.6.0,<6.0.0",
 ]
-mechanics = [
-  "sms @ git+https://github.com/BASE-Laboratory/structural_mechanics_solver.git@main",
-]
+# Note: structural_mechanics_solver (sms) is currently a private BASE-Laboratory repository;
+# install from a local or authenticated checkout (`pip install -e ../structural_mechanics_solver`)
+# until sms is published publicly.
 notebooks = [
   "matplotlib>=3.7",
   "jupyter>=1.0",

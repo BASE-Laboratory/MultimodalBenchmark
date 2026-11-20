@@ -301,14 +301,56 @@ def test_mechanics_discrepancy_and_conformal_envelopes_via_evaluator(
     assert np.isfinite(m["tortuosity_rel_err"])
 
 
-@pytest.mark.skipif(
-    not __import__("multimodal_benchmark.metrics", fromlist=["is_sms_available"]).is_sms_available(),
-    reason="Compiled Fortran SMS library (_libsms_core) not installed in current environment",
-)
-def test_golden_thread_live_openimpala_and_sms_on_same_ome_zarr_bundle(tmp_path: Path) -> None:
-    """Golden Thread: score BOTH OpenImpala transport AND compiled Fortran SMS stiffness on one .ome.zarr bundle."""
+def test_golden_thread_openimpala_and_sms_on_same_ome_zarr_bundle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Golden Thread: score BOTH OpenImpala transport AND SMS stiffness on one .ome.zarr bundle."""
+    import sys
+    from types import ModuleType, SimpleNamespace
+
     from basecoat import Volume, write_ome_zarr
     from multimodal_benchmark.evaluator import evaluate_bundles, load_bundle
+    from multimodal_benchmark.metrics import is_sms_available
+    from multimodal_benchmark.metrics import mechanics as mech_mod
+
+    mech_mod._REF_MECHANICS_CACHE.clear()
+
+    if not is_sms_available():
+        # Public CI does not have read access to private BASE-Laboratory/structural_mechanics_solver;
+        # enforce the exact SMS VolumeProtocol contract (spacing_in('m'), (z,y,x) -> Fortran (x,y,z) .T)
+        mock_sms = ModuleType("sms")
+
+        def _protocol_sms_effective_modulus(
+            vol: Volume,
+            *,
+            direction: str = "z",
+            youngs_modulus: float = 10.0e9,
+            poisson_ratio: float = 0.25,
+            solid_phase: int = 1,
+            rtol: float = 1e-5,
+            max_iter: int = 4000,
+            check_converged: bool = False,
+        ) -> tuple[float, Any]:
+            _ = (poisson_ratio, rtol, max_iter, check_converged)
+            sp_m = vol.spacing_in("m")
+            assert len(sp_m) == 3 and np.allclose(sp_m, sp_m[0])
+            f_xyz = np.asarray(vol).T
+            assert f_xyz.flags.f_contiguous
+            solid = (f_xyz == int(solid_phase)).astype(np.float64)
+            axis_idx = {"x": 0, "y": 1, "z": 2}[direction]
+            # Harmonic-of-slabs / Reuss-Voigt axial bound sensitive to series necks along loading axis
+            area_frac_along_axis = np.mean(
+                solid, axis=tuple(i for i in range(3) if i != axis_idx)
+            )
+            e_eff = (
+                0.0
+                if np.any(area_frac_along_axis <= 0.0)
+                else float(youngs_modulus) / float(np.mean(1.0 / area_frac_along_axis))
+            )
+            return e_eff, SimpleNamespace(converged=True)
+
+        mock_sms.effective_modulus = _protocol_sms_effective_modulus  # type: ignore[attr-defined]
+        monkeypatch.setitem(sys.modules, "sms", mock_sms)
 
     # 3-axis percolating porous scaffold (12^3) with continuous load-bearing solid struts AND open pore channels
     n = 12
@@ -318,7 +360,6 @@ def test_golden_thread_live_openimpala_and_sms_on_same_ome_zarr_bundle(tmp_path:
     hr_ref[4:8, 4:8, :] = 15.0
 
     hr_pred = hr_ref.copy()
-    # Perturb two boundary voxels slightly
     hr_pred[3, 4, 4] = 85.0
     hr_pred[8, 7, 7] = 85.0
 
