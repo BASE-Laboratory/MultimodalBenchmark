@@ -109,45 +109,72 @@ def compute_transport_discrepancy(
     inputs_are_grayscale: bool = True,
     voxel_size_um: float = 0.8125,
     mask: Optional[np.ndarray] = None,
+    report_threshold_sensitivity: bool = False,
+    sensitivity_rel_shifts: tuple[float, ...] = (-0.05, 0.05),
 ) -> Dict[str, float]:
-    """Compare OpenImpala transport properties between prediction and ground truth."""
+    """Compare OpenImpala transport properties under one fixed threshold rule applied identically to pred and ref."""
     import hashlib
 
     vox_m = float(voxel_size_um) * 1e-6
     if inputs_are_grayscale:
         tau_frozen = calibrate_frozen_pore_threshold(ref_vol_or_binary, mask=mask)
-        ref_bin = (np.asarray(ref_vol_or_binary, dtype=np.float32) < tau_frozen).astype(np.uint8)
-        pred_bin = binarize_pore_phase_frozen(pred_vol_or_binary, ref_vol_or_binary, frozen_threshold=tau_frozen, mask=mask)
+        ref_arr = np.asarray(ref_vol_or_binary, dtype=np.float32)
+        pred_aligned = affine_cupping_normalize(pred_vol_or_binary, ref_arr, mask=mask)
+        ref_bin = (ref_arr < tau_frozen).astype(np.uint8)
+        pred_bin = (pred_aligned < tau_frozen).astype(np.uint8)
     else:
-        ref_bin = (np.asarray(ref_vol_or_binary) > 0).astype(np.uint8)
-        pred_bin = (np.asarray(pred_vol_or_binary) > 0).astype(np.uint8)
+        tau_frozen = 0.5
+        ref_arr = np.asarray(ref_vol_or_binary, dtype=np.float32)
+        pred_aligned = np.asarray(pred_vol_or_binary, dtype=np.float32)
+        ref_bin = (ref_arr > 0).astype(np.uint8)
+        pred_bin = (pred_aligned > 0).astype(np.uint8)
 
-    ref_key = (ref_bin.shape, round(vox_m, 12), hashlib.blake2b(ref_bin.tobytes(), digest_size=8).hexdigest())
-    if ref_key not in _REF_TRANSPORT_CACHE:
-        if len(_REF_TRANSPORT_CACHE) >= 8:
-            _REF_TRANSPORT_CACHE.clear()
-        _REF_TRANSPORT_CACHE[ref_key] = compute_openimpala_transport_metrics(ref_bin, voxel_size_m=vox_m, pore_phase_id=1)
-    m_ref = _REF_TRANSPORT_CACHE[ref_key]
-    m_pred = compute_openimpala_transport_metrics(pred_bin, voxel_size_m=vox_m, pore_phase_id=1)
+    def _eval_pair(p_b: np.ndarray, r_b: np.ndarray) -> Dict[str, float]:
+        r_key = (r_b.shape, round(vox_m, 12), hashlib.blake2b(r_b.tobytes(), digest_size=8).hexdigest())
+        if r_key not in _REF_TRANSPORT_CACHE:
+            if len(_REF_TRANSPORT_CACHE) >= 12:
+                _REF_TRANSPORT_CACHE.clear()
+            _REF_TRANSPORT_CACHE[r_key] = compute_openimpala_transport_metrics(r_b, voxel_size_m=vox_m, pore_phase_id=1)
+        mr = _REF_TRANSPORT_CACHE[r_key]
+        mp = compute_openimpala_transport_metrics(p_b, voxel_size_m=vox_m, pore_phase_id=1)
+        r_deff = abs(mp["d_eff_mean"] - mr["d_eff_mean"]) / max(abs(mr["d_eff_mean"]), 1e-8)
+        if np.isfinite(mp["tortuosity_mean"]) and np.isfinite(mr["tortuosity_mean"]):
+            r_tau = abs(mp["tortuosity_mean"] - mr["tortuosity_mean"]) / max(abs(mr["tortuosity_mean"]), 1e-8)
+        else:
+            r_tau = 0.0 if (mp["percolates_any_axis"] == mr["percolates_any_axis"]) else 1.0
+        r_ssa = abs(mp["ssa_inv_m"] - mr["ssa_inv_m"]) / max(abs(mr["ssa_inv_m"]), 1e-8)
+        return {
+            "porosity_pred": mp["porosity"],
+            "porosity_ref": mr["porosity"],
+            "porosity_abs_err": abs(mp["porosity"] - mr["porosity"]),
+            "d_eff_mean_pred": mp["d_eff_mean"],
+            "d_eff_mean_ref": mr["d_eff_mean"],
+            "d_eff_rel_err": float(r_deff),
+            "tortuosity_mean_pred": mp["tortuosity_mean"],
+            "tortuosity_mean_ref": mr["tortuosity_mean"],
+            "tortuosity_rel_err": float(r_tau),
+            "ssa_inv_m_pred": mp["ssa_inv_m"],
+            "ssa_inv_m_ref": mr["ssa_inv_m"],
+            "ssa_rel_err": float(r_ssa),
+            "percolates_all_axes_pred": mp["percolates_all_axes"],
+            "percolates_all_axes_ref": mr["percolates_all_axes"],
+            "frozen_threshold_value": float(tau_frozen),
+        }
 
-    rel_deff = abs(m_pred["d_eff_mean"] - m_ref["d_eff_mean"]) / max(abs(m_ref["d_eff_mean"]), 1e-8)
-    if np.isfinite(m_pred["tortuosity_mean"]) and np.isfinite(m_ref["tortuosity_mean"]):
-        rel_tau = abs(m_pred["tortuosity_mean"] - m_ref["tortuosity_mean"]) / max(abs(m_ref["tortuosity_mean"]), 1e-8)
-    else:
-        rel_tau = 0.0 if (m_pred["percolates_any_axis"] == m_ref["percolates_any_axis"]) else 1.0
-    rel_ssa = abs(m_pred["ssa_inv_m"] - m_ref["ssa_inv_m"]) / max(abs(m_ref["ssa_inv_m"]), 1e-8)
+    out = _eval_pair(pred_bin, ref_bin)
 
-    return {
-        "porosity_pred": m_pred["porosity"],
-        "porosity_ref": m_ref["porosity"],
-        "porosity_abs_err": abs(m_pred["porosity"] - m_ref["porosity"]),
-        "d_eff_mean_pred": m_pred["d_eff_mean"],
-        "d_eff_mean_ref": m_ref["d_eff_mean"],
-        "d_eff_rel_err": float(rel_deff),
-        "tortuosity_mean_pred": m_pred["tortuosity_mean"],
-        "tortuosity_mean_ref": m_ref["tortuosity_mean"],
-        "tortuosity_rel_err": float(rel_tau),
-        "ssa_rel_err": float(rel_ssa),
-        "percolates_all_axes_pred": m_pred["percolates_all_axes"],
-        "percolates_all_axes_ref": m_ref["percolates_all_axes"],
-    }
+    if inputs_are_grayscale and report_threshold_sensitivity and len(sensitivity_rel_shifts) > 0:
+        lo, hi = np.percentile(ref_arr, [5.0, 95.0])
+        dyn = max(float(hi - lo), 1e-6)
+        deff_errs = [out["d_eff_rel_err"]]
+        eps_errs = [out["porosity_abs_err"]]
+        for rel_s in sensitivity_rel_shifts:
+            tau_s = tau_frozen + float(rel_s) * dyn
+            res_s = _eval_pair((pred_aligned < tau_s).astype(np.uint8), (ref_arr < tau_s).astype(np.uint8))
+            deff_errs.append(res_s["d_eff_rel_err"])
+            eps_errs.append(res_s["porosity_abs_err"])
+        out["threshold_sens_d_eff_rel_err_max"] = float(np.max(deff_errs))
+        out["threshold_sens_d_eff_rel_err_span"] = float(np.max(deff_errs) - np.min(deff_errs))
+        out["threshold_sens_porosity_abs_err_span"] = float(np.max(eps_errs) - np.min(eps_errs))
+
+    return out

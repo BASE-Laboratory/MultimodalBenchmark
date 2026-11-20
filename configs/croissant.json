@@ -1,0 +1,149 @@
+{
+  "@context": {
+    "@language": "en",
+    "@vocab": "https://schema.org/",
+    "sc": "https://schema.org/",
+    "cr": "http://mlcommons.org/croissant/1.0",
+    "dct": "http://purl.org/dc/terms/",
+    "citeAs": "cr:citeAs",
+    "column": "cr:column",
+    "conformsTo": "dct:conformsTo",
+    "data": {"@id": "cr:data", "@type": "@json"},
+    "dataType": {"@id": "cr:dataType", "@type": "@vocab"},
+    "extract": "cr:extract",
+    "field": "cr:field",
+    "fileProperty": "cr:fileProperty",
+    "fileObject": "cr:fileObject",
+    "fileSet": "cr:fileSet",
+    "format": "cr:format",
+    "includes": "cr:includes",
+    "isLiveDataset": "cr:isLiveDataset",
+    "jsonPath": "cr:jsonPath",
+    "key": "cr:key",
+    "md5": "cr:md5",
+    "parentField": "cr:parentField",
+    "path": "cr:path",
+    "recordSet": "cr:recordSet",
+    "references": "cr:references",
+    "regex": "cr:regex",
+    "repeated": "cr:repeated",
+    "replace": "cr:replace",
+    "separator": "cr:separator",
+    "source": "cr:source",
+    "subField": "cr:subField",
+    "transform": "cr:transform"
+  },
+  "@type": "sc:Dataset",
+  "name": "Zn-13X-Bench",
+  "conformsTo": "http://mlcommons.org/croissant/1.0",
+  "description": "Real multi-resolution synchrotron XCT and XRD-CT pairs with physics-based OpenImpala transport scoring for tomographic super-resolution, chemical fusion, and cross-beamline registration, built on Green et al., Scientific Data 12, 329 (2025).",
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "url": "https://github.com/BASE-Laboratory/MultimodalBenchmark",
+  "version": "2.0.0",
+  "isBasedOn": [
+    "https://doi.org/10.1038/s41597-025-04605-9",
+    "https://doi.org/10.5281/zenodo.13329639",
+    "https://doi.org/10.5281/zenodo.13349402",
+    "https://doi.org/10.5281/zenodo.12206815",
+    "https://doi.org/10.5281/zenodo.13327651",
+    "https://doi.org/10.5281/zenodo.13327682",
+    "https://doi.org/10.5281/zenodo.13327692",
+    "https://doi.org/10.5281/zenodo.14245751"
+  ],
+  "citeAs": "@article{green2025multimodal, title={Three-dimensional, multimodal synchrotron data for machine learning applications}, author={Green, Calum and others}, journal={Scientific Data}, volume={12}, pages={329}, year={2025}, doi={10.1038/s41597-025-04605-9}}",
+  "distribution": [
+    {
+      "@type": "cr:FileObject",
+      "@id": "splits-json",
+      "name": "benchmark_splits_v1.json",
+      "description": "Leakage-free LR-voxel-buffered T1 axial splits and 4-fold Leave-One-Slice-Out T2 XRD-CT splits.",
+      "contentUrl": "splits/benchmark_splits_v1.json",
+      "encodingFormat": "application/json"
+    },
+    {
+      "@type": "cr:FileObject",
+      "@id": "transforms-json",
+      "name": "i13_benchmark_transforms.json",
+      "description": "Frozen 7-DOF similarity transforms and ruby-sphere calibrated magnification ratios (1.604x, 2.026x, 2.493x, 5.051x, 8.101x).",
+      "contentUrl": "configs/i13_benchmark_transforms.json",
+      "encodingFormat": "application/json"
+    },
+    {
+      "@type": "cr:FileObject",
+      "@id": "tasks-yaml",
+      "name": "tasks.yaml",
+      "description": "Formal specifications for Tasks T1, T2, T3, and optional T4, including primary raw_float32 and secondary cleaned_dering_v1 tracks.",
+      "contentUrl": "configs/tasks/tasks.yaml",
+      "encodingFormat": "application/x-yaml"
+    }
+  ],
+  "recordSet": [
+    {
+      "@type": "cr:RecordSet",
+      "@id": "t1_xct_super_resolution",
+      "name": "T1: Real-Pair Synchrotron XCT Super-Resolution",
+      "description": "Paired DLS I13-2 float32 sub-volumes across 1.604x, 2.026x, 2.493x, 5.051x, and 8.101x ratios above the ruby shadow, supporting Synthetic-vs-Real training comparisons scored by PSNR, SSIM, 3D FSC, and OpenImpala transport.",
+      "field": [
+        {
+          "@type": "cr:Field",
+          "@id": "t1_xct_super_resolution/block_id",
+          "name": "block_id",
+          "dataType": "sc:Text",
+          "source": {"fileObject": {"@id": "splits-json"}, "extract": {"jsonPath": "$.t1_0p8125um_hr_blocks[*].block_id"}}
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "t1_xct_super_resolution/split",
+          "name": "split",
+          "dataType": "sc:Text",
+          "source": {"fileObject": {"@id": "splits-json"}, "extract": {"jsonPath": "$.t1_0p8125um_hr_blocks[*].split"}}
+        }
+      ]
+    },
+    {
+      "@type": "cr:RecordSet",
+      "@id": "t2_chemical_fusion_loso",
+      "name": "T2: Chemical Super-Resolution and Fusion (4-Fold LOSO)",
+      "description": "50 um DIAD XRD-CT Na/Zn maps + co-registered 0.54 um DIAD XCT paired with 25 um XRD-CT reference slices at z = 9, 14, 17, 18, scored up to the measured 25 um FRC resolution cutoff (k <= 0.43 cyc/px).",
+      "field": [
+        {
+          "@type": "cr:Field",
+          "@id": "t2_chemical_fusion_loso/test_25um_scan",
+          "name": "test_25um_scan",
+          "dataType": "sc:Integer",
+          "source": {"fileObject": {"@id": "splits-json"}, "extract": {"jsonPath": "$.t2_chemical_fusion_loso.held_out_test_25um_scans[*]"}}
+        }
+      ]
+    },
+    {
+      "@type": "cr:RecordSet",
+      "@id": "t3_cross_beamline_registration",
+      "name": "T3: Cross-Beamline Tomographic Registration (Gated on Stage 0C)",
+      "description": "Unaligned DLS I13-2 (1.625 um) and DLS K11 DIAD (0.54 um) float32 XCT volumes scored against Stage 0C fiducial-verified 7-DOF transform on fiducial TRE, scale recovery, and octant residual drift.",
+      "field": [
+        {
+          "@type": "cr:Field",
+          "@id": "t3_cross_beamline_registration/task_name",
+          "name": "task_name",
+          "dataType": "sc:Text",
+          "source": {"fileObject": {"@id": "tasks-yaml"}, "extract": {"jsonPath": "$.tasks.t3.name"}}
+        }
+      ]
+    },
+    {
+      "@type": "cr:RecordSet",
+      "@id": "t4_sparse_view_xrdct",
+      "name": "T4: Sparse-View XRD-CT Reconstruction (Optional Extension)",
+      "description": "Angularly subsampled 25 um XRD-CT sinograms paired with full 40 x 79 reference reconstructions, scored by variance-weighted residual and 2D FRC.",
+      "field": [
+        {
+          "@type": "cr:Field",
+          "@id": "t4_sparse_view_xrdct/task_name",
+          "name": "task_name",
+          "dataType": "sc:Text",
+          "source": {"fileObject": {"@id": "tasks-yaml"}, "extract": {"jsonPath": "$.tasks.t4.name"}}
+        }
+      ]
+    }
+  ]
+}

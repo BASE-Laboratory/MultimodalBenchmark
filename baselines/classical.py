@@ -222,8 +222,109 @@ def cnmf_coupled_fusion(
     return zn_out.astype(np.float32), na_out.astype(np.float32)
 
 
+def guided_filter_chemical_upsample(
+    chem_50um_yx: np.ndarray,
+    xct_guide_25um_yx: np.ndarray,
+    radius_px: int = 2,
+    eps_rel: float = 0.02,
+    pore_mask_yx: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """He et al. (2013) edge-preserving Guided Image Filter upsampling for Task T2 chemical fusion."""
+    from scipy.ndimage import uniform_filter
+
+    c_lr = np.asarray(chem_50um_yx, dtype=np.float64)
+    guide = np.asarray(xct_guide_25um_yx, dtype=np.float64)
+    ny_hr, nx_hr = guide.shape
+    p = resize(c_lr, (ny_hr, nx_hr), order=1, mode="edge", preserve_range=True)
+
+    win = 2 * int(radius_px) + 1
+    eps = (float(eps_rel) * max(float(np.ptp(guide)), 1e-6)) ** 2 + 1e-10
+
+    mean_i = uniform_filter(guide, size=win, mode="reflect")
+    mean_p = uniform_filter(p, size=win, mode="reflect")
+    corr_i = uniform_filter(guide * guide, size=win, mode="reflect")
+    corr_ip = uniform_filter(guide * p, size=win, mode="reflect")
+
+    var_i = np.maximum(corr_i - mean_i * mean_i, 0.0)
+    cov_ip = corr_ip - mean_i * mean_p
+    a = cov_ip / (var_i + eps)
+    b = mean_p - a * mean_i
+
+    mean_a = uniform_filter(a, size=win, mode="reflect")
+    mean_b = uniform_filter(b, size=win, mode="reflect")
+    out = np.clip(mean_a * guide + mean_b, 0.0, None)
+    if pore_mask_yx is not None:
+        out[pore_mask_yx > 0] = 0.0
+    return out.astype(np.float32)
+
+
 # ---------------------------------------------------------------------------
-# T4: Classical 3-Phase XCT Segmentation Baseline
+# Optional T4: Sparse-View 25 um XRD-CT Sinogram Reconstruction Baselines
+# ---------------------------------------------------------------------------
+
+def fbp_sparse_reconstruct_2d(
+    sinogram_at: np.ndarray,
+    angles_deg: np.ndarray,
+    center_px: Optional[float] = None,
+    filter_name: str = "hann",
+) -> np.ndarray:
+    """Filtered Back-Projection (FBP) baseline for subsampled sparse-view XRD-CT sinograms."""
+    from registration.xrdct_reference import reconstruct_sinogram_2d
+
+    return reconstruct_sinogram_2d(sinogram_at, angles_deg, center_px=center_px, filter_name=filter_name)
+
+
+def sirt_reconstruct_2d(
+    sinogram_at: np.ndarray,
+    angles_deg: np.ndarray,
+    center_px: Optional[float] = None,
+    n_iter: int = 60,
+    relaxation: float = 0.85,
+    non_negative: bool = True,
+) -> np.ndarray:
+    """Simultaneous Iterative Reconstruction Technique (SIRT) with non-negativity for Optional Task T4."""
+    from scipy.ndimage import shift as nd_shift
+    from skimage.transform import iradon, radon
+
+    sino = np.asarray(sinogram_at, dtype=np.float64).copy()
+    ang = np.asarray(angles_deg, dtype=np.float64).copy()
+    if ang.size > 2 and abs(abs(float(ang[-1] - ang[0])) - 360.0) < 0.35:
+        sino = sino[:-1]
+        ang = ang[:-1]
+
+    n_ang, n_trans = sino.shape
+    nominal_fbp = float(n_trans // 2)
+    if center_px is not None:
+        delta = float(center_px) - nominal_fbp
+        if abs(delta) > 1e-6:
+            sino = nd_shift(sino, shift=(0.0, -delta), order=3, mode="nearest")
+
+    # Precompute row (ray length R*1) and column (backprojection R^T*1) diagonal normalizers for exact Landweber/SIRT stability
+    ones_img = np.ones((n_trans, n_trans), dtype=np.float64)
+    yy, xx = np.ogrid[:n_trans, :n_trans]
+    circ_mask = ((yy - 0.5 * (n_trans - 1)) ** 2 + (xx - 0.5 * (n_trans - 1)) ** 2) <= (0.5 * n_trans) ** 2
+    ones_img *= circ_mask
+
+    ray_sums = np.maximum(radon(ones_img, theta=ang, circle=True), 1.0)  # (n_trans, n_ang)
+    col_sums = np.maximum(
+        iradon(np.ones((n_trans, n_ang), dtype=np.float64), theta=ang, output_size=n_trans, filter_name=None, circle=True),
+        1.0,
+    )
+
+    x = np.zeros((n_trans, n_trans), dtype=np.float64)
+    sino_t = sino.T  # (n_trans, n_ang) matching skimage.transform.radon convention
+    for _ in range(int(n_iter)):
+        fwd = radon(x, theta=ang, circle=True)
+        resid = (sino_t - fwd) / ray_sums
+        bp = iradon(resid, theta=ang, output_size=n_trans, filter_name=None, circle=True)
+        x = x + float(relaxation) * (bp / col_sums) * circ_mask
+        if non_negative:
+            x = np.maximum(x, 0.0)
+    return x.astype(np.float32)
+
+
+# ---------------------------------------------------------------------------
+# Auxiliary 3-Phase XCT Segmentation Helper (Used in Registration & Masks)
 # ---------------------------------------------------------------------------
 
 def multi_otsu_watershed_3d(
@@ -235,7 +336,6 @@ def multi_otsu_watershed_3d(
     sm = gaussian_filter(np.asarray(xct_zyx, dtype=np.float32), sigma=smooth_sigma_vox)
     thresholds = threshold_multiotsu(sm, classes=num_classes)
     labels = np.digitize(sm, bins=thresholds).astype(np.int32)
-    # Clean isolated 1-voxel salt noise in highest-attenuation class
     if num_classes >= 3:
         top = binary_opening(labels == (num_classes - 1), iterations=1)
         labels[(labels == (num_classes - 1)) & (~top)] = num_classes - 2

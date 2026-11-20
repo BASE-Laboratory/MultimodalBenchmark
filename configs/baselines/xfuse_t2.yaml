@@ -1,0 +1,23 @@
+# Zn-13X-Bench Task T2 Baseline Configuration:
+# 4-Fold Leave-One-Slice-Out (LOSO) Chemical Super-Resolution & Fusion
+task: "t2"
+reference_track: "raw_float32"
+splits_file: "splits/benchmark_splits_v1.json"
+split_protocol: "leave_one_slice_out_4fold_cv"
+diad_xct_record: "13349402"
+diad_xrdct_record: "13329639"
+diad_astra_flip_x_pending_stage0a2: true
+peak_aggregation: "all_sum"
+axial_z_guard_band_um: 100.0
+evaluation_cutoff_cyc_per_px: 0.43
+loso_25um_slices: [43324, 43322, 43323, 43325]
+seeds: [42, 137, 2026]
+models:
+  - "dual_encoder_unet"
+  - "xfuse"
+evaluation:
+  primary_metrics:
+    - "mean_bandlimited_reduced_chi2"
+    - "mean_bandlimited_rmse"
+    - "in_pellet_na_zn_corr_abs_err"
+    - "reaction_front_pos_err_um"

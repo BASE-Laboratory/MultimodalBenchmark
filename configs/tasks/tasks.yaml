@@ -1,198 +1,139 @@
-# Formal Benchmark Task Specifications (v2.0 — Frozen Preprocessing & Two-Track Reference Policy)
+# Zn-13X-Bench Formal Task Specifications (NeurIPS Datasets & Benchmarks Edition)
+# Three core tasks (T1, T2, T3) + one optional extension (T4).
+# Artifact removal and standalone segmentation are NOT benchmark tasks; preprocessing is shipped
+# strictly as a documented secondary track, and segmentation is folded into T1 OpenImpala scoring.
 
 reference_tracks:
   raw_float32:
     version: "1.0"
     role: "primary"
     description: >
-      Registered, UNCLEANED 32-bit float reconstructed volumes (Zenodo 12206815, 13327651, 13327682, 13327692,
-      13349402) resampled strictly via fitted 7-DOF similarity transforms. Official primary reference for all tasks.
+      Registered, UNCLEANED 32-bit float reconstructed sub-volumes (Zenodo 12206815, 13327651, 13327682,
+      13327692, 13349402) resampled strictly via frozen 7-DOF transforms (`configs/i13_benchmark_transforms.json`).
+      Primary reference for all tasks; 8-bit Zenodo 14245751 previews are never used for scoring.
   cleaned_dering_v1:
     version: "1.0-frozen"
     role: "secondary_optional"
     description: >
-      Registered 32-bit float volumes processed ONLY with frozen conservative polar de-ringing
-      (`preprocessing.artifact_cleanup.remove_rings_polar_conservative`, r(Delta_1, Zn_XRDCT) <= 0.03; 98.7-99.2%
-      true edge sharpness retention on synthetic ground-truth phantom). Polynomial radial cupping detrending and
-      axial z-detrending are EXCLUDED because both correlate with real Zn/Na attenuation chemistry.
+      Same sub-volumes after frozen conservative polar de-ringing (`remove_rings_polar_conservative`), ruby z-slab
+      validity masking (`clean_z_mask`), and XRD-CT 0/360 closure & conjugate COR fixes, published with exact
+      difference maps. Polynomial radial cupping detrending and axial z-detrending are excluded because empirical
+      checks against 25 um XRD-CT prove they absorb real Zn/Na core-shell and axial chemistry.
+
+headline_experiment:
+  name: "Synthetic-Trained vs. Real-Trained Synchrotron Super-Resolution Scored by Physics"
+  tracks: ["2p026x", "8p101x"]
+  seeds: [42, 137, 2026]
+  training_regimes:
+    synthetic_clean: "HR rung blurred + downsampled at exact true magnification ratio (no added noise)"
+    synthetic_noisy: "HR rung blurred + downsampled at exact true magnification ratio + calibrated sCMOS noise"
+    real_paired: "Measured lower-resolution rung aligned via frozen 7-DOF benchmark transform"
+  evaluation_target: "Real paired test slabs only (image metrics + OpenImpala transport + threshold sensitivity)"
 
 tasks:
   t1:
-    name: "T1: Multi-Magnification Synchrotron XCT Super-Resolution"
+    name: "T1: Real-Pair Synchrotron XCT Super-Resolution"
     beamline: "DLS I13-2"
     primary_reference_track: "raw_float32"
     secondary_reference_track: "cleaned_dering_v1"
-    input_modality: "32-bit float XCT (8-bit Zenodo 14245751 sub-volumes are for registration/visual checks only)"
-    target_modality: "32-bit float XCT (required for pore thresholding and OpenImpala transport scoring)"
-    resampling_and_scale_note: >
-      Resampling between ladder rungs MUST apply the fitted 7-DOF similarity transforms rather than nominal ratios.
-      3D sphere metrology on the nominal 500 um ruby calibration sphere agrees with 7-DOF pellet scale ratios to 0.04%,
-      fixing the relative magnification ratios (1.604x, 2.026x, 2.493x, 5.051x, 8.101x) independently of any ruby-ball
-      diameter manufacturing tolerance (+/-dD/500 um cancels identically in ratios, whereas absolute voxel sizes
-      inherit the ball's manufacturing tolerance).
-    fresnel_fringe_scoring_note: >
-      Neither LR nor HR I13-2 scans used Paganin phase retrieval (z_sd = 30 mm, ram-lak FBP), while scintillator
-      thickness (500/100/25 um) and exposure time (0.024-1.0 s) vary across objectives. Consequently, HR Fresnel
-      propagation double-fringes constitute an irreducible discrepancy component that intensity-only SR models cannot
-      invert exactly; `fringe_masked_psnr_db` and `bandlimited_psnr_db` are reported alongside full-band `psnr_db`.
+    input_modality: "Lower-resolution I13-2 float32 rung at true magnification ratios (1.604x, 2.026x, 2.493x, 5.051x, 8.101x)"
+    target_modality: "Higher-resolution I13-2 float32 rung resampled via frozen 7-DOF transform"
+    baselines: ["Tricubic", "3D U-Net", "SwinIR", "OpenLSR-X"]
+    threshold_rule: >
+      One fixed Otsu threshold calibrated on the reference volume is applied identically to affine-aligned
+      prediction and reference volumes before OpenImpala PDE scoring, with +/-5% dynamic-range sensitivity reported.
     tracks:
-      1p6x:
+      1p604x:
         lr_scan: "169068"
         lr_voxel_um: 2.6
         ruby_scaled_lr_voxel_um: 2.5945
         hr_scan: "169067"
         hr_voxel_um: 1.625
         ruby_scaled_hr_voxel_um: 1.6212
-        nominal_scale_factor: 1.6
-        fitted_scale_ratio: 1.6039
-      2x:
+        true_scale_ratio: 1.6039
+      2p026x:
         lr_scan: "169067"
         lr_voxel_um: 1.625
         ruby_scaled_lr_voxel_um: 1.6212
         hr_scan: "169066"
         hr_voxel_um: 0.8125
         ruby_scaled_hr_voxel_um: 0.8006
-        nominal_scale_factor: 2.0
-        fitted_scale_ratio: 2.0258
-      2p5x:
+        true_scale_ratio: 2.0258
+      2p493x:
         lr_scan: "169066"
         lr_voxel_um: 0.8125
         ruby_scaled_lr_voxel_um: 0.8006
         hr_scan: "169065"
         hr_voxel_um: 0.325
         ruby_scaled_hr_voxel_um: 0.3211
-        nominal_scale_factor: 2.5
-        fitted_scale_ratio: 2.4934
-      5x:
+        true_scale_ratio: 2.4934
+      5p051x:
         lr_scan: "169067"
         lr_voxel_um: 1.625
         ruby_scaled_lr_voxel_um: 1.6212
         hr_scan: "169065"
         hr_voxel_um: 0.325
         ruby_scaled_hr_voxel_um: 0.3211
-        nominal_scale_factor: 5.0
-        fitted_scale_ratio: 5.0511
-      8x:
+        true_scale_ratio: 5.0511
+      8p101x:
         lr_scan: "169068"
         lr_voxel_um: 2.6
         ruby_scaled_lr_voxel_um: 2.5945
         hr_scan: "169065"
         hr_voxel_um: 0.325
         ruby_scaled_hr_voxel_um: 0.3211
-        nominal_scale_factor: 8.0
-        fitted_scale_ratio: 8.1014
+        true_scale_ratio: 8.1014
         transform_composition: "chained_adjacent_7dof_only"
     required_keys: ["pred"]
-    primary_metrics: ["psnr_db", "fringe_masked_psnr_db", "bandlimited_psnr_db", "ssim", "fsc_0p5_cyc_per_vox", "d_eff_rel_err", "tortuosity_rel_err"]
+    primary_metrics: ["psnr_db", "ssim", "fsc_0p5_cyc_per_vox", "d_eff_rel_err", "tortuosity_rel_err", "ssa_rel_err", "porosity_abs_err"]
 
   t2:
-    name: "T2: Cross-Beamline Synchrotron XCT Super-Resolution"
-    beamline: "DLS I13-2 -> DLS K11 (DIAD)"
-    primary_reference_track: "raw_float32"
-    secondary_reference_track: "cleaned_dering_v1"
-    gated_on_stage0c: true
-    stage0c_max_tre_um: 1.0
-    lr_scan: "169067"
-    lr_voxel_um: 1.625
-    hr_scan: "k11-43334"
-    hr_voxel_um: 0.54
-    scale_factor: 3.009259
-    required_keys: ["pred"]
-    primary_metrics: ["psnr_db", "fringe_masked_psnr_db", "bandlimited_psnr_db", "ssim", "fsc_0p5_cyc_per_vox", "d_eff_rel_err", "tortuosity_rel_err"]
-
-  t3:
-    name: "T3: Correlative Multimodal Chemical Super-Resolution / Fusion"
+    name: "T2: Chemical Super-Resolution and Fusion"
     beamline: "DLS K11 (DIAD)"
     primary_reference_track: "raw_float32"
     secondary_reference_track: "cleaned_dering_v1"
-    input_modalities: ["0.54 um DIAD XCT (raw_float32 primary)", "50 um DIAD XRD-CT (Zn-13X & Na-13X, +47.5 deg gts_cs_theta corrected, 360-endpoint merged)"]
-    target_modality: "25 um DIAD XRD-CT Reference Slices (Sparse 40x79 Unique Angles; Continuum-Subtracted, q-Calibrated Zn-13X & Na-13X)"
-    effective_resolution_and_bandlimit_note: >
-      On a 25 um grid (Nyquist full-period = 50.0 um) vs 50 um grid (Nyquist = 100.0 um), Spearman-Brown full-dataset
-      corrected odd/even FRC(0.5) [2*FRC/(1+FRC)] gives a 4-slice mean Zn resolution of 58.5 um on 25 um references
-      (van Heel 1/2-bit: 57.9 um; raw uncorrected half-map FRC(0.5): 64.3 um) versus 103.6 um on paired 50 um inputs
-      (1/2-bit: 111.5 um; raw half-map FRC(0.5): 120.1 um), yielding a true empirical chemical resolution gain of
-      1.79x (SB-FRC 0.5) to 1.93x (1/2-bit). T3 therefore scores primary metrics band-limited to k_cut = 0.43 cyc/px
-      (~58 um) so models are neither rewarded nor penalized for fitting sparse-sampling noise above the reference cutoff.
+    split_protocol: "leave_one_slice_out_4fold_cv"
+    input_modalities: ["50 um DIAD XRD-CT Na/Zn maps (+47.5 deg corrected)", "Co-registered 0.54 um DIAD float32 XCT"]
+    target_modality: "25 um DIAD XRD-CT reference maps at z = 9, 14, 17, 18 (43324, 43322, 43323, 43325)"
+    baselines: ["Bicubic", "Guided Filter", "Dual-Encoder U-Net", "X-FUSE"]
     evaluation_cutoff_cyc_per_px: 0.43
-    held_out_test_scans_25um: [43322, 43323, 43324, 43325]
-    paired_50um_scans:
-      43324:
-        scan_50um: 43345
-        z_index: 9
-        zn_phase_fraction: 0.991
-        unique_angles_25um: 79
-        sino_neighbor_margin_dr: 0.0052
-        stage_z_status: "LOW_MARGIN_UNIFORM_ZN_ZONE_CONFIRM_ON_SCARF_ENTRY_NEXUS"
-        zn_25um_res_sb0p5_um: 50.0
-        zn_25um_res_halfbit_um: 50.0
-        zn_50um_res_sb0p5_um: 100.0
-        zn_50um_res_halfbit_um: 100.0
-        true_res_gain_halfbit: 2.00
-      43322:
-        scan_50um: 43395
-        z_index: 14
-        zn_phase_fraction: 0.624
-        unique_angles_25um: 79
-        sino_neighbor_margin_dr: 0.0180
-        stage_z_status: "CLEAR_REACTION_FRONT_MARGIN"
-        zn_25um_res_sb0p5_um: 58.9
-        zn_25um_res_halfbit_um: 57.6
-        zn_50um_res_sb0p5_um: 100.0
-        zn_50um_res_halfbit_um: 104.5
-        true_res_gain_halfbit: 1.82
-      43323:
-        scan_50um: 43398
-        z_index: 17
-        zn_phase_fraction: 0.252
-        unique_angles_25um: 79
-        sino_neighbor_margin_dr: 0.0140
-        stage_z_status: "CLEAR_REACTION_FRONT_MARGIN"
-        zn_25um_res_sb0p5_um: 66.4
-        zn_25um_res_halfbit_um: 66.1
-        zn_50um_res_sb0p5_um: 100.0
-        zn_50um_res_halfbit_um: 127.7
-        true_res_gain_halfbit: 1.93
-      43325:
-        scan_50um: 43399
-        z_index: 18
-        zn_phase_fraction: 0.096
-        unique_angles_25um: 79
-        sino_neighbor_margin_dr: 0.0254
-        stage_z_status: "CLEAR_REACTION_FRONT_MARGIN"
-        zn_25um_res_sb0p5_um: 58.6
-        zn_25um_res_halfbit_um: 58.1
-        zn_50um_res_sb0p5_um: 114.6
-        zn_50um_res_halfbit_um: 114.0
-        true_res_gain_halfbit: 1.96
-    slice_matching_note: >
-      Scans 43322, 43323, and 43325 have decisive 800-ray sinogram margins (+0.014 to +0.025), whereas 43324 sits in
-      the nearly uniform 99.1% Zn base zone with a small margin (+0.0052 over z=8) and MUST be confirmed against raw
-      /entry vertical stage z positions via `python -m registration.diad_correlative --dls-raw-nexus-dir ...` on SCARF.
-    axial_z_guard_band_um: 100.0
+    resolution_ratio_summary:
+      mean_25um_raw_half_frc0p5_um: 64.3
+      mean_25um_full_sb_frc0p5_um: 58.5
+      mean_25um_half_bit_um: 57.9
+      mean_50um_raw_half_frc0p5_um: 120.1
+      mean_50um_full_sb_frc0p5_um: 103.6
+      mean_50um_half_bit_um: 111.5
+      true_resolution_ratio_sb0p5: 1.79
+      true_resolution_ratio_half_bit: 1.93
+    paired_slices:
+      43324: {scan_50um: 43345, z_index: 9, zn_fraction: 0.991, margin_dr: 0.0052, status: "CONFIRM_STAGE_Z_ON_SCARF"}
+      43322: {scan_50um: 43395, z_index: 14, zn_fraction: 0.624, margin_dr: 0.0180, status: "CLEAR_MARGIN"}
+      43323: {scan_50um: 43398, z_index: 17, zn_fraction: 0.252, margin_dr: 0.0140, status: "CLEAR_MARGIN"}
+      43325: {scan_50um: 43399, z_index: 18, zn_fraction: 0.096, margin_dr: 0.0254, status: "CLEAR_MARGIN"}
     required_keys: ["zn", "na"]
-    primary_metrics: ["mean_bandlimited_reduced_chi2", "mean_bandlimited_rmse", "mean_bandlimited_pearson_r", "mean_reduced_chi2", "mean_rmse", "t3b_pore_leakage_rel"]
+    primary_metrics: ["mean_bandlimited_reduced_chi2", "mean_bandlimited_rmse", "in_pellet_na_zn_corr_abs_err", "reaction_front_pos_err_um"]
 
-  t4a:
-    name: "T4a: Structural 3-Phase XCT Segmentation"
+  t3:
+    name: "T3: Cross-Beamline Tomographic Registration"
+    beamline: "DLS I13-2 <-> DLS K11 (DIAD)"
+    gated_on_stage0c: true
     primary_reference_track: "raw_float32"
     secondary_reference_track: "cleaned_dering_v1"
-    classes:
-      0: "Pore"
-      1: "Pellet_Solid"
-      2: "Calibration_Bead"
-    required_keys: ["labels"]
-    primary_metrics: ["macro_dice", "boundary_f1_tol1", "mean_phase_fraction_mae", "d_eff_rel_err"]
+    input_modalities: ["Unaligned I13-2 1.625 um float32 XCT (169067)", "Unaligned DIAD 0.54 um float32 XCT (k11-43334)"]
+    target_modality: "Fiducial-verified 7-DOF similarity transform from Stage 0C (pending SCARF/Hamilton execution)"
+    baselines: ["3-DOF Rigid", "7-DOF NMI", "VoxelMorph"]
+    required_keys: ["mapped_fiducials_xyz_um"]
+    primary_metrics: ["fiducial_tre_mean_um", "fiducial_tre_p95_um", "scale_rel_err_pct", "octant_residual_drift_mean_um"]
 
-  t4b:
-    name: "T4b: XRD-Validated Chemical Tri-Phase Segmentation"
+  t4:
+    name: "T4: Sparse-View XRD-CT Reconstruction (Optional Extension)"
+    optional_extension: true
+    beamline: "DLS K11 (DIAD)"
     primary_reference_track: "raw_float32"
     secondary_reference_track: "cleaned_dering_v1"
-    gated_on_cnr: true
-    min_recommended_cnr: 1.5
-    classes:
-      0: "Pore"
-      1: "Na-13X"
-      2: "Zn-13X"
-    required_keys: ["labels"]
-    primary_metrics: ["macro_dice", "dice_na_13x", "dice_zn_13x", "boundary_f1_tol1", "mean_phase_fraction_mae"]
+    input_modality: "Angularly subsampled 25 um XRD-CT sinograms (e.g. 20 or 40 projections out of 79 unique angles)"
+    target_modality: "Full 40 x 79 continuum-subtracted 25 um XRD-CT reconstruction"
+    baselines: ["FBP", "SIRT", "U-Net Post-Processing"]
+    required_keys: ["recon"]
+    primary_metrics: ["reduced_chi2", "rmse", "frc_0p5_cyc_per_px", "frc_full_sb_0p5_cyc_per_px"]

@@ -17,7 +17,11 @@ from .segmentation import (
 )
 from .fusion import (
     compute_noise_normalized_chi2,
+    compute_t2_fusion_metrics,
     compute_t3_fusion_metrics,
+)
+from .registration_eval import (
+    compute_t3_registration_metrics,
 )
 from .transport import (
     calibrate_frozen_pore_threshold,
@@ -38,7 +42,9 @@ __all__ = [
     "compute_phase_fraction_error",
     "compute_segmentation_metrics",
     "compute_noise_normalized_chi2",
+    "compute_t2_fusion_metrics",
     "compute_t3_fusion_metrics",
+    "compute_t3_registration_metrics",
     "calibrate_frozen_pore_threshold",
     "compute_openimpala_transport_metrics",
     "compute_transport_discrepancy",

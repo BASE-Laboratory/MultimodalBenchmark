@@ -91,6 +91,72 @@ def _channel_25um_metrics(
     return out
 
 
+def _slice_reaction_front_and_phase_corr(
+    zn_p_2d: np.ndarray,
+    na_p_2d: np.ndarray,
+    zn_r_2d: np.ndarray,
+    na_r_2d: np.ndarray,
+    pixel_size_um: float = 25.0,
+) -> Dict[str, float]:
+    """Compute in-pellet Na/Zn correlation and Zn/(Zn+Na) reaction-front penetration position error (in um)."""
+    from scipy.ndimage import distance_transform_edt
+
+    zp = np.clip(np.asarray(zn_p_2d, dtype=np.float64), 0.0, None)
+    np_ = np.clip(np.asarray(na_p_2d, dtype=np.float64), 0.0, None)
+    zr = np.clip(np.asarray(zn_r_2d, dtype=np.float64), 0.0, None)
+    nr = np.clip(np.asarray(na_r_2d, dtype=np.float64), 0.0, None)
+
+    tot_r = zr + nr
+    p95 = float(np.percentile(tot_r, 95.0)) if tot_r.size > 0 else 0.0
+    pellet = tot_r > max(0.20 * p95, 1e-8)
+    if int(np.count_nonzero(pellet)) < 8:
+        pellet = np.ones_like(tot_r, dtype=bool)
+
+    corr_ref = (
+        float(np.corrcoef(zr[pellet], nr[pellet])[0, 1])
+        if (np.std(zr[pellet]) > 1e-10 and np.std(nr[pellet]) > 1e-10)
+        else 0.0
+    )
+    corr_pred = (
+        float(np.corrcoef(zp[pellet], np_[pellet])[0, 1])
+        if (np.std(zp[pellet]) > 1e-10 and np.std(np_[pellet]) > 1e-10)
+        else 0.0
+    )
+
+    # Distance inward from outer catalyst pellet boundary (in um)
+    depth_um = distance_transform_edt(pellet) * float(pixel_size_um)
+    f_zn_r = zr / np.maximum(zr + nr, 1e-8)
+    f_zn_p = zp / np.maximum(zp + np_, 1e-8)
+
+    # If slice straddles a reaction front (both >0.5 and <=0.5 present inside pellet), measure 0.5-isocontour distance;
+    # otherwise fall back to Zn-weighted mean penetration depth in um so pure-Zn slices remain well-defined.
+    has_front_r = bool(np.any(f_zn_r[pellet] >= 0.5) and np.any(f_zn_r[pellet] < 0.5))
+    has_front_p = bool(np.any(f_zn_p[pellet] >= 0.5) and np.any(f_zn_p[pellet] < 0.5))
+    if has_front_r and has_front_p:
+        # Mean symmetric closest-point distance (Chamfer / Hausdorff-mean in um) between f_zn == 0.5 boundaries
+        b_r = pellet & (np.abs(f_zn_r - 0.5) <= 0.18)
+        b_p = pellet & (np.abs(f_zn_p - 0.5) <= 0.18)
+        if np.any(b_r) and np.any(b_p):
+            dt_to_r = distance_transform_edt(~b_r) * float(pixel_size_um)
+            dt_to_p = distance_transform_edt(~b_p) * float(pixel_size_um)
+            front_err_um = 0.5 * (float(np.mean(dt_to_r[b_p])) + float(np.mean(dt_to_p[b_r])))
+        else:
+            w_r = float(np.sum(f_zn_r[pellet] * depth_um[pellet]) / (np.sum(f_zn_r[pellet]) + 1e-8))
+            w_p = float(np.sum(f_zn_p[pellet] * depth_um[pellet]) / (np.sum(f_zn_p[pellet]) + 1e-8))
+            front_err_um = abs(w_p - w_r)
+    else:
+        w_r = float(np.sum(f_zn_r[pellet] * depth_um[pellet]) / (np.sum(f_zn_r[pellet]) + 1e-8))
+        w_p = float(np.sum(f_zn_p[pellet] * depth_um[pellet]) / (np.sum(f_zn_p[pellet]) + 1e-8))
+        front_err_um = abs(w_p - w_r)
+
+    return {
+        "in_pellet_na_zn_corr_pred": corr_pred,
+        "in_pellet_na_zn_corr_ref": corr_ref,
+        "in_pellet_na_zn_corr_abs_err": abs(corr_pred - corr_ref),
+        "reaction_front_pos_err_um": float(front_err_um),
+    }
+
+
 def compute_t3_fusion_metrics(
     pred_zn_25um: np.ndarray,
     pred_na_25um: np.ndarray,
@@ -103,8 +169,9 @@ def compute_t3_fusion_metrics(
     hr_pore_mask: Optional[np.ndarray] = None,
     hr_solid_mask: Optional[np.ndarray] = None,
     cutoff_cyc_per_px: float = 0.43,
+    pixel_size_um: float = 25.0,
 ) -> Dict[str, float]:
-    """Evaluate T3a (25 um reference chemical maps, full & band-limited to ~58 um cutoff) and optional T3b."""
+    """Evaluate chemical super-resolution & fusion (revised Task T2 / legacy T3) with FRC band-limit & reaction front."""
     zn_p = np.asarray(pred_zn_25um, dtype=np.float64)
     na_p = np.asarray(pred_na_25um, dtype=np.float64)
     zn_r = np.asarray(ref_zn_25um, dtype=np.float64)
@@ -126,7 +193,8 @@ def compute_t3_fusion_metrics(
         sn = ref_na_sigma2[iz] if ref_na_sigma2 is not None else None
         m_zn = _channel_25um_metrics(zn_p[iz], zn_r[iz], sz, prefix="zn_", cutoff_cyc_per_px=cutoff_cyc_per_px)
         m_na = _channel_25um_metrics(na_p[iz], na_r[iz], sn, prefix="na_", cutoff_cyc_per_px=cutoff_cyc_per_px)
-        slice_metrics.append({**m_zn, **m_na})
+        m_rf = _slice_reaction_front_and_phase_corr(zn_p[iz], na_p[iz], zn_r[iz], na_r[iz], pixel_size_um=pixel_size_um)
+        slice_metrics.append({**m_zn, **m_na, **m_rf})
 
     keys = list(slice_metrics[0].keys())
     out: Dict[str, float] = {k: float(np.mean([sm[k] for sm in slice_metrics])) for k in keys}
@@ -141,7 +209,7 @@ def compute_t3_fusion_metrics(
             out["zn_bandlimited_reduced_chi2"] + out["na_bandlimited_reduced_chi2"]
         )
 
-    # Optional T3b HR physical consistency diagnostics
+    # Optional HR physical consistency diagnostics
     if hr_pred_zn is not None and hr_pred_na is not None:
         hz = np.asarray(hr_pred_zn, dtype=np.float64)
         hn = np.asarray(hr_pred_na, dtype=np.float64)
@@ -149,11 +217,11 @@ def compute_t3_fusion_metrics(
             pm = hr_pore_mask > 0
             solid_scale = float(np.percentile(np.abs(hz) + np.abs(hn), 90.0)) + 1e-8
             out["t3b_pore_leakage_rel"] = float(np.mean(np.abs(hz[pm]) + np.abs(hn[pm])) / solid_scale)
+            out["pore_leakage_rel"] = out["t3b_pore_leakage_rel"]
         if hr_solid_mask is not None and np.any(hr_solid_mask > 0):
             sm = hr_solid_mask > 0
             tot_solid = hz[sm] + hn[sm]
             out["t3b_solid_stoichiometry_cv"] = float(np.std(tot_solid) / (np.abs(np.mean(tot_solid)) + 1e-8))
-        # Forward-PSF conservation check if HR grid is an integer multiple of 25 um slice grid
         if hz.ndim == 2 and zn_r.shape[0] == 1:
             fy = hz.shape[0] // zn_r.shape[1]
             fx = hz.shape[1] // zn_r.shape[2]
@@ -166,3 +234,6 @@ def compute_t3_fusion_metrics(
                 )
 
     return out
+
+
+compute_t2_fusion_metrics = compute_t3_fusion_metrics

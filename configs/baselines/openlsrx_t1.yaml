@@ -1,22 +1,31 @@
-# Reproducible 3-Seed OpenLSR-X Baseline Configuration (Task T1)
+# Zn-13X-Bench Task T1 Headline Experiment Configuration:
+# Synthetic-Trained vs. Real-Trained 3D XCT Super-Resolution Scored by Physics (OpenImpala)
 task: "t1"
-track: "2x"
-lr_scan_id: "169067"
-hr_scan_id: "169066"
+tracks:
+  - "2p026x"   # 169067 (1.6212 um) -> 169066 (0.8006 um)
+  - "8p101x"   # 169068 (2.5945 um) -> 169065 (0.3211 um, chained 7-DOF)
+reference_track: "raw_float32"
+secondary_reference_track: "cleaned_dering_v1"
+benchmark_transforms_file: "configs/i13_benchmark_transforms.json"
 splits_file: "splits/benchmark_splits_v1.json"
-registration_transform: "outputs/stage0_i13/transform_169067_to_169066.json"
-seeds: [42, 137, 2025]
+seeds: [42, 137, 2026]
+training_regimes:
+  - "synthetic_clean"
+  - "synthetic_noisy"
+  - "real_paired"
 backbones:
-  - "edsr3d"
-  - "rcan3d"
+  - "unet3d"
   - "swinir3d"
+  - "openlsrx"
 training:
-  patch_size_hr: [64, 64, 64]
+  patch_size_lr_2p026x: [32, 64, 64]
+  patch_size_lr_8p101x: [24, 48, 48]
   batch_size: 4
   epochs: 100
   loss: "l1"
   optimizer: "adamw"
   learning_rate: 1.0e-4
 evaluation:
-  cupping_normalization: true
-  frozen_threshold_transport: true
+  test_on: "real_paired_only"
+  fixed_threshold_transport: true
+  report_threshold_sensitivity: true

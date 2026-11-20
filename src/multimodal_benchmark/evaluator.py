@@ -1,4 +1,4 @@
-"""Unified benchmark submission evaluator and leaderboard formatter."""
+"""Unified Zn-13X-Bench submission evaluator and leaderboard formatter (Tasks T1, T2, T3, and optional T4)."""
 
 from __future__ import annotations
 
@@ -12,11 +12,14 @@ import numpy as np
 
 from .metrics import (
     compute_image_sr_metrics,
+    compute_noise_normalized_chi2,
     compute_segmentation_metrics,
-    compute_t3_fusion_metrics,
+    compute_t2_fusion_metrics,
+    compute_t3_registration_metrics,
     compute_transport_discrepancy,
 )
-from tasks.definitions import get_task_spec, validate_submission_arrays
+from registration.xrdct_reference import compute_2d_frc
+from tasks.definitions import validate_submission_arrays
 
 
 def load_bundle(path: Path | str) -> Dict[str, np.ndarray]:
@@ -27,9 +30,11 @@ def load_bundle(path: Path | str) -> Dict[str, np.ndarray]:
             return {k: np.asarray(data[k]) for k in data.files}
     out: Dict[str, np.ndarray] = {}
     with h5py.File(p, "r") as h5f:
+
         def _collect(name: str, obj: object) -> None:
             if isinstance(obj, h5py.Dataset):
                 out[name] = np.asarray(obj[:])
+
         h5f.visititems(_collect)
     return out
 
@@ -58,18 +63,18 @@ def evaluate_bundles(
     method_name: str = "candidate",
     voxel_size_um: Optional[float] = None,
     with_transport: bool = True,
+    report_threshold_sensitivity: bool = True,
     bootstrap_samples: int = 200,
 ) -> Dict[str, Any]:
-    """Validate and score a candidate prediction bundle against a ground-truth reference bundle."""
-    spec = get_task_spec(task_id)
-    validate_submission_arrays(spec.task_id, pred_bundle, ref_bundle)
+    """Validate and score a candidate prediction bundle against a reference bundle for T1, T2, T3, or T4."""
+    spec = validate_submission_arrays(task_id, pred_bundle, ref_bundle)
 
     mask = ref_bundle.get("mask")
     metrics: Dict[str, float] = {}
     ci95: Dict[str, Dict[str, float]] = {}
 
-    if spec.task_id in ("t1", "t2"):
-        vox = voxel_size_um if voxel_size_um is not None else (0.8125 if spec.task_id == "t1" else 0.54)
+    if spec.task_id == "t1":
+        vox = voxel_size_um if voxel_size_um is not None else 0.8006
         pred = pred_bundle["pred"]
         ref = ref_bundle["pred"]
         metrics.update(compute_image_sr_metrics(pred, ref, mask=mask, voxel_size_um=vox))
@@ -81,6 +86,7 @@ def evaluate_bundles(
                     inputs_are_grayscale=True,
                     voxel_size_um=vox,
                     mask=mask,
+                    report_threshold_sensitivity=report_threshold_sensitivity,
                 )
             )
         if bootstrap_samples > 0 and ref.ndim == 3 and ref.shape[0] >= 4:
@@ -90,9 +96,9 @@ def evaluate_bundles(
             ]
             ci95["psnr_db"] = bootstrap_ci_95(slice_psnr, n_boot=bootstrap_samples)
 
-    elif spec.task_id == "t3":
+    elif spec.task_id == "t2":
         metrics.update(
-            compute_t3_fusion_metrics(
+            compute_t2_fusion_metrics(
                 pred_zn_25um=pred_bundle["zn"],
                 pred_na_25um=pred_bundle["na"],
                 ref_zn_25um=ref_bundle["zn"],
@@ -107,28 +113,59 @@ def evaluate_bundles(
         )
         if bootstrap_samples > 0 and ref_bundle["zn"].ndim == 3 and ref_bundle["zn"].shape[0] >= 2:
             per_slice_rmse = [
-                compute_t3_fusion_metrics(
+                compute_t2_fusion_metrics(
                     pred_bundle["zn"][i],
                     pred_bundle["na"][i],
                     ref_bundle["zn"][i],
                     ref_bundle["na"][i],
-                )["mean_rmse"]
+                )["mean_bandlimited_rmse"]
                 for i in range(ref_bundle["zn"].shape[0])
             ]
-            ci95["mean_rmse"] = bootstrap_ci_95(per_slice_rmse, n_boot=bootstrap_samples)
+            ci95["mean_bandlimited_rmse"] = bootstrap_ci_95(per_slice_rmse, n_boot=bootstrap_samples)
 
-    elif spec.task_id in ("t4a", "t4b"):
+    elif spec.task_id == "t3":
+        src_pts = ref_bundle.get("fiducial_points_xyz_um", ref_bundle["mapped_fiducials_xyz_um"])
+        metrics.update(
+            compute_t3_registration_metrics(
+                fiducial_points_xyz_um=src_pts,
+                ref_mapped_fiducials_xyz_um=ref_bundle["mapped_fiducials_xyz_um"],
+                pred_mapped_fiducials_xyz_um=pred_bundle["mapped_fiducials_xyz_um"],
+                ref_scale=float(ref_bundle["scale"]) if "scale" in ref_bundle else None,
+                pred_scale=float(pred_bundle["scale"]) if "scale" in pred_bundle else None,
+                pellet_octant_centers_xyz_um=ref_bundle.get("pellet_octants_xyz_um"),
+                ref_mapped_octants_xyz_um=ref_bundle.get("mapped_octants_xyz_um"),
+                pred_mapped_octants_xyz_um=pred_bundle.get("mapped_octants_xyz_um"),
+            )
+        )
+
+    elif spec.task_id == "t4":
+        pred_rec = np.asarray(pred_bundle["recon"], dtype=np.float64)
+        ref_rec = np.asarray(ref_bundle["recon"], dtype=np.float64)
+        p2 = pred_rec[None, ...] if pred_rec.ndim == 2 else pred_rec
+        r2 = ref_rec[None, ...] if ref_rec.ndim == 2 else ref_rec
+        sig2 = ref_bundle.get("sigma2")
+        if sig2 is not None and sig2.ndim == 2:
+            sig2 = sig2[None, ...]
+
+        rmses, frc05s, sb05s, chi2s = [], [], [], []
+        for i in range(r2.shape[0]):
+            rmses.append(float(np.sqrt(np.mean((p2[i] - r2[i]) ** 2))))
+            frc = compute_2d_frc(p2[i], r2[i])
+            frc05s.append(frc.cutoff_0p5_cyc_per_px)
+            sb05s.append(frc.cutoff_full_sb_0p5_cyc_per_px)
+            if sig2 is not None:
+                chi2s.append(compute_noise_normalized_chi2(p2[i], r2[i], sig2[i]))
+        metrics["rmse"] = float(np.mean(rmses))
+        metrics["frc_0p5_cyc_per_px"] = float(np.mean(frc05s))
+        metrics["frc_full_sb_0p5_cyc_per_px"] = float(np.mean(sb05s))
+        if chi2s:
+            metrics["reduced_chi2"] = float(np.mean(chi2s))
+
+    elif spec.task_id == "t4a":
         vox = voxel_size_um if voxel_size_um is not None else 0.54
         pred_lbl = pred_bundle["labels"]
         ref_lbl = ref_bundle["labels"]
-        metrics.update(
-            compute_segmentation_metrics(
-                pred_lbl,
-                ref_lbl,
-                class_names=spec.classes,
-                mask=mask,
-            )
-        )
+        metrics.update(compute_segmentation_metrics(pred_lbl, ref_lbl, class_names=spec.classes, mask=mask))
         if with_transport and ref_lbl.ndim == 3:
             metrics.update(
                 compute_transport_discrepancy(
@@ -161,21 +198,18 @@ def format_markdown_leaderboard_row(result: Mapping[str, Any]) -> str:
     for k in p_keys:
         v = result["metrics"][k]
         vals.append(f"{v:.4f}" if np.isfinite(v) else str(v))
-    return (
-        "| " + " | ".join(headers) + " |\n"
-        "| " + " | ".join(sep) + " |\n"
-        "| " + " | ".join(vals) + " |"
-    )
+    return "| " + " | ".join(headers) + " |\n| " + " | ".join(sep) + " |\n| " + " | ".join(vals) + " |"
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Score a MultimodalBenchmark submission.")
-    parser.add_argument("--task", required=True, help="Task ID: t1, t2, t3, t4a, or t4b")
+    parser = argparse.ArgumentParser(description="Score a Zn-13X-Bench submission (T1, T2, T3, or optional T4).")
+    parser.add_argument("--task", required=True, help="Task ID: t1, t2, t3, or t4")
     parser.add_argument("--prediction", type=Path, required=True, help="Path to prediction .npz or .h5")
-    parser.add_argument("--reference", type=Path, required=True, help="Path to ground-truth reference .npz or .h5")
+    parser.add_argument("--reference", type=Path, required=True, help="Path to reference .npz or .h5")
     parser.add_argument("--method", default="candidate", help="Method name for leaderboard row")
     parser.add_argument("--voxel-size-um", type=float, default=None, help="Physical voxel size in um")
     parser.add_argument("--no-transport", action="store_true", help="Skip OpenImpala PDE transport metrics")
+    parser.add_argument("--threshold-sensitivity", action="store_true", help="Report +/-5%% OpenImpala threshold sensitivity")
     parser.add_argument("--bootstrap-samples", type=int, default=200, help="Bootstrap resamples for 95%% CIs")
     parser.add_argument("--out-json", type=Path, default=None, help="Optional JSON output path")
     parser.add_argument("--markdown", action="store_true", help="Print Markdown leaderboard table")
@@ -190,6 +224,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         method_name=args.method,
         voxel_size_um=args.voxel_size_um,
         with_transport=not args.no_transport,
+        report_threshold_sensitivity=args.threshold_sensitivity,
         bootstrap_samples=args.bootstrap_samples,
     )
 
@@ -203,3 +238,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     else:
         print(json.dumps(result, indent=2))
     return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

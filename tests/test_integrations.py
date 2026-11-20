@@ -52,3 +52,50 @@ def test_openlsrx_7dof_adapter_aligns_synthetic_pair() -> None:
     lr_on_hr, hr_out, meta = align_openlsrx_7dof_pair(lr, hr, lr_voxel_um=1.625, hr_voxel_um=0.8125)
     assert lr_on_hr.shape == hr_out.shape == (24, 32, 32)
     assert 0.94 < meta["transform"]["scale"] < 1.06
+
+
+def test_openlsrx_frozen_benchmark_transforms_and_two_track_extractor(tmp_path: Path) -> None:
+    """Verify OpenLSR-X consumes frozen benchmark transforms, synthetic degradations, and reversible two-track HDF5s."""
+    import json
+    from baselines.integrations import (
+        load_benchmark_7dof_transform,
+        synthesize_degraded_lr_from_hr,
+    )
+    from preprocessing.extract_benchmark_tracks import extract_paired_subvolume_tracks
+
+    tfm_2x, meta_2x = load_benchmark_7dof_transform("2.026x")
+    tfm_8x, meta_8x = load_benchmark_7dof_transform("8.101x")
+    assert abs(meta_2x["true_magnification_ratio"] - 2.0258) < 1e-4
+    assert abs(meta_8x["true_magnification_ratio"] - 8.1014) < 1e-4
+    assert abs(tfm_2x.scale - 0.98727) < 1e-4
+
+    hr = np.ones((16, 32, 32), dtype=np.float32) * 75.0
+    hr[:, 8:24, 8:24] = 85.0
+    syn_clean = synthesize_degraded_lr_from_hr(hr, true_scale_ratio=2.0258, with_noise=False)
+    syn_noisy = synthesize_degraded_lr_from_hr(hr, true_scale_ratio=2.0258, with_noise=True, seed=7)
+    assert syn_clean.shape == syn_noisy.shape
+    assert float(np.std(syn_noisy - syn_clean)) > 0.05
+
+    out_h5 = tmp_path / "tracks.h5"
+    rep = extract_paired_subvolume_tracks(
+        lr_zyx=syn_noisy,
+        hr_zyx=hr,
+        lr_nominal_voxel_um=1.625,
+        hr_nominal_voxel_um=0.8125,
+        ruby_calibrated_hr_voxel_um=0.8006,
+        track_name="2p026x",
+        out_h5_path=out_h5,
+    )
+    assert rep["lite_4x_shape_zyx"] == [4, 8, 8]
+    with h5py.File(out_h5, "r") as fh:
+        raw_hr = fh["primary_raw_float32/hr"][:]
+        cln_hr = fh["cleaned_dering_v1/hr"][:]
+        diff_hr = fh["cleaned_dering_v1/diff_hr_rings"][:]
+        np.testing.assert_allclose(cln_hr + diff_hr, raw_hr, atol=1e-5)
+        ngff = json.loads(fh.attrs["ome_ngff_zattrs_json"])
+        assert ngff["multiscales"][0]["version"] == "0.4"
+
+    croissant = json.loads(Path("configs/croissant.json").read_text(encoding="utf-8"))
+    assert croissant["conformsTo"] == "http://mlcommons.org/croissant/1.0"
+    assert len(croissant["recordSet"]) == 4
+

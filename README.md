@@ -15,37 +15,42 @@ The dataset captures a binderless **Zn-doped Zeolite 13X** catalyst fragment mou
 ```text
 MultimodalBenchmark/
 ├── configs/
-│   ├── manifest.yaml              # Verified Zenodo DOIs, MD5s, shapes & HDF5 paths
-│   ├── tasks/                     # Formal YAML task definitions (T1, T2, T3, T4)
-│   └── baselines/                 # 3-seed configs for OpenLSR-X & X-FUSE
-├── registration/                  # Stage 0 audit & 7-DOF correlative registration
-│   ├── xrdct_reference.py         # Conjugate COR solver, NNLS unmixing & FRC noise floor
-│   ├── diad_correlative.py        # Astra/TomoPy chirality check & 3D PSF XCT<->XRD-CT alignment
-│   ├── i13_ladder.py              # Multi-scale 7-DOF I13-2 ladder registration & TRE
-│   └── cross_beamline_audit.py    # Fiducial-vs-pellet slip/octant audit & region gating YAML
-├── preprocessing/                 # Conservative ("do-no-harm") artifact cleanup & spatial z-gating
-│   └── artifact_cleanup.py        # Edge-protected polar de-ringing, 7-term cupping detrend & ruby z-mask
-├── tasks/                         # Task loaders, contracts & submission validators
-├── splits/                        # Leakage-free 3D train/val/test split generator (guard-banded)
-├── baselines/                     # Classical (Bicubic, JBU, Guided-TV, CNMF, Otsu) & learned runners
-├── src/multimodal_benchmark/      # Core I/O, manifest verifier & evaluation metrics
-├── evaluate.py                    # Single-command CLI evaluator outputting JSON + Markdown rows
-└── *.ipynb, DIAD_Savu/, I13_2_Savu/ # Original 2025 Scientific Data companion notebooks & Savu lists
+│   ├── manifest.yaml                  # Verified Zenodo DOIs, MD5s, shapes & HDF5 paths
+│   ├── i13_benchmark_transforms.json  # Frozen 7-DOF transforms & ruby-sphere scale ratios
+│   ├── croissant.json                 # MLCommons Croissant 1.0 JSON-LD metadata (NeurIPS D&B)
+│   ├── tasks/tasks.yaml               # Formal YAML specs for Tasks T1, T2, T3 & optional T4
+│   └── baselines/                     # 3-seed Synthetic-vs-Real T1 & 4-fold LOSO T2 configs
+├── registration/                      # Metrology, stage-motor & 7-DOF correlative registration
+│   ├── xrdct_reference.py             # Conjugate COR, NNLS unmixing & SB-FRC / 1/2-bit floor
+│   ├── diad_correlative.py            # Stage 0A-2: Astra flip_x, XCT<->XRD-CT & /entry stage z
+│   ├── i13_ladder.py                  # Stage 0B: 7-DOF I13-2 ladder & 500 um ruby metrology
+│   └── cross_beamline_audit.py        # Stage 0C: Fiducial-vs-pellet slip & octant gate (Task T3)
+├── preprocessing/                     # Documented secondary track (NOT a standalone task)
+│   ├── artifact_cleanup.py            # Frozen polar de-ringing, ruby z-mask & 360-closure fix
+│   └── extract_benchmark_tracks.py    # SCARF/Hamilton float32 primary/cleaned/lite/NGFF extractor
+├── tasks/                             # Task specs & submission schema validators
+├── splits/                            # LR-voxel-buffered T1 slabs & 4-fold LOSO T2 CV splits
+├── baselines/                         # Tricubic, Guided Filter, FBP, SIRT, OpenLSR-X & X-FUSE
+├── src/multimodal_benchmark/          # Core I/O, manifest verifier & OpenImpala/FRC/TRE evaluators
+├── DATASHEET.md                       # NeurIPS Datasets & Benchmarks Datasheet (Gebru et al.)
+├── evaluate.py                        # Unified CLI evaluator outputting JSON + Markdown rows
+└── *.ipynb, DIAD_Savu/, I13_2_Savu/   # Original 2025 Scientific Data companion notebooks
 ```
 
 ---
 
-## Benchmark Tasks & Two-Track Reference Versioning
+## `Zn-13X-Bench` Tasks & Two-Track Reference Versioning
 
-- **Primary Reference Track (`raw_float32`, Default for v1.0):** Registered, **uncleaned** `32-bit float` reconstructed volumes resampled via the fitted 7-DOF similarity transforms.
-- **Secondary Versioned Track (`cleaned_dering_v1`, Frozen Scope):** Registered `32-bit float` volumes processed strictly with frozen conservative polar de-ringing (`preprocessing.artifact_cleanup.remove_rings_polar_conservative`; `98.7–99.2%` ground-truth phantom edge sharpness retention; $|r(\Delta_1, \text{Zn}_{\text{XRD-CT}})| \le 0.03$). Radial polynomial cupping detrending and axial $z$-detrending are **excluded** from both tracks because empirical correlation against XRD-CT shows radial/axial polynomial fits absorb real $\text{Zn}^{2+}/\text{Na}^{+}$ core–shell and axial chemistry.
+- **Primary Reference Track (`raw_float32`, Default):** Registered, **uncleaned** `32-bit float` sub-volumes resampled via the frozen 7-DOF transforms in [`configs/i13_benchmark_transforms.json`](configs/i13_benchmark_transforms.json).
+- **Cleaned Track (`cleaned_dering_v1`, Secondary Documented Track):** Same sub-volumes after frozen conservative polar de-ringing (`98.7–99.2%` ground-truth phantom edge retention; $|r(\Delta_1, \text{Zn})| \le 0.026$), ruby `z`-masking, and XRD-CT `360°`/COR fixes, published with exact difference maps (polynomial cupping and axial $z$-detrending excluded to preserve real $\text{Zn}/\text{Na}$ chemistry).
+- **Headline Experiment (`T1`):** Compare models (`3D U-Net`, `SwinIR`, `OpenLSR-X`) trained on **synthetic degradations** (blur + downsample, with/without noise) vs. **real lower-resolution rungs** (`2.026×` and `8.101×`, 3 seeds), tested exclusively on real pairs and scored with both image metrics and `OpenImpala` transport.
 
-| Task | Input | Reference Target (`raw_float32` Primary) | Evaluation Region | Key Metrics |
+| Task | Input | Reference (`raw_float32` Primary) | Baselines | Metrics |
 |---|---|---|---|---|
-| **T1: Multi-Magnification XCT Super-Resolution** | Real lower-res I13-2 `float32` XCT (`~1.604×, ~2.026×, ~2.493×, ~5.051×, ~8.101×`; ratios cancel `500 µm` ruby ball manufacturing tolerance) | Paired higher-res I13-2 `float32` XCT (resampled via fitted 7-DOF transforms) | Ruby-shadow-free 3D overlap sub-volumes (`float32` required) | `psnr_db`, **`fringe_masked_psnr_db`**, **`bandlimited_psnr_db`** (unretrieved Fresnel fringe robustness), `ssim`, **3D FSC (`0.5`)**, frozen-threshold **OpenImpala** $D_{\text{eff}}, \tau$ |
-| **T2: Cross-Beamline XCT Super-Resolution** *(Gated on Stage 0C)* | I13-2 `1.625 µm` `float32` XCT | DIAD `0.54 µm` `float32` XCT (`~3.009×`) | Rigid pellet sub-volumes passing Stage 0C (`< 1.0 µm` octant drift) | Same as T1 (remains gated until Stage 0C runs on SCARF/Hamilton) |
-| **T3: Correlative Chemical Super-Resolution / Fusion** | DIAD `0.54 µm` XCT + `+47.5°`-corrected `50 µm` XRD-CT (`103.6 µm` SB-FRC / `111.5 µm` `1/2-bit` res.) | Continuum-subtracted `25 µm` Zn/Na **reference** maps (`58.5 µm` SB-FRC / `57.9 µm` `1/2-bit` res.; true `1.79–1.93×` resolution gain; `43322–43325`) | 4 held-out `25 µm` slices (`±100 µm` z-guard; `43324` stage-`z` confirmed on SCARF) | **Band-limited (`k ≤ 0.43 cyc/px`, `~58 µm`) $\chi^2_\nu$, RMSE & $r$**, full-band $\chi^2_\nu$/RMSE, pore-void leakage |
-| **T4: Multimodal Phase Segmentation** | `float32` XCT sub-volume | **T4a:** `Pore / Solid / Bead`<br>**T4b:** XRD-validated `Pore / Na-13X / Zn-13X` | Guard-banded 3D sub-volumes | Per-class Dice, Boundary F1 (`1, 2` vox), phase-fraction error, **OpenImpala** $D_{\text{eff}}, \tau$, SSA |
+| **T1: Real-Pair XCT Super-Resolution** | Lower-res I13-2 `float32` rung at true ratios (`1.604×, 2.026×, 2.493×, 5.051×, 8.101×`) | Higher-res rung resampled via frozen 7-DOF transform (LR-voxel-buffered slabs above ruby shadow) | `Tricubic`, `3D U-Net`, `SwinIR`, `OpenLSR-X` | PSNR (`full`, `fringe_masked`, `bandlimited`), SSIM, 3D FSC; **OpenImpala** $D_{\text{eff}}/D_0, \tau$, SSA, porosity (+ `±5%` threshold sensitivity) |
+| **T2: Chemical Super-Resolution & Fusion** | `50 µm` XRD-CT Na/Zn maps (`103.6 µm` SB-FRC) + co-registered `0.54 µm` DIAD XCT | `25 µm` XRD-CT maps at `z = 9, 14, 17, 18` (`58.5 µm` SB-FRC; 4-fold Leave-One-Slice-Out CV) | `Bicubic`, `Guided Filter`, `Dual-Encoder U-Net`, `X-FUSE` | Band-limited (`k ≤ 0.43 cyc/px`) variance-weighted $\chi^2_\nu$ & RMSE; in-pellet Na/Zn correlation; reaction-front position (`µm`) |
+| **T3: Cross-Beamline Registration** *(Gated on Stage 0C)* | Unaligned I13-2 (`1.625 µm`) & DIAD (`0.54 µm`) `float32` XCT | Fiducial-verified 7-DOF transform from Stage 0C *(pending SCARF/Hamilton run)* | `3-DOF Rigid`, `7-DOF NMI`, `VoxelMorph` | Disjoint fiducial TRE (`µm`); scale recovery (`%`); `2×2×2` octant residual drift (`µm`) |
+| **T4: Sparse-View Reconstruction** *(Optional)* | Subsampled `25 µm` XRD-CT sinograms (`20, 40` views) | Full `40 × 79` continuum-subtracted reconstruction | `FBP`, `SIRT`, `U-Net Post-Processing` | Variance-weighted $\chi^2_\nu$, RMSE, 2D `FRC(0.5)` / `SB-FRC(0.5)` |
 
 ---
 
