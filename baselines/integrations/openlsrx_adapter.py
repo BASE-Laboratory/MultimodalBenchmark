@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
+from basecoat import SimilarityTransform3D as BasecoatSimilarityTransform3D
 from scipy.ndimage import gaussian_filter, zoom
-import SimpleITK as sitk
 
 from registration.i13_ladder import (
     LadderRegistrationResult,
@@ -48,6 +48,39 @@ _TRACK_ALIASES = {
 }
 
 
+def load_benchmark_basecoat_transform(
+    track: str = "2p026x",
+    transforms_json: Path | str = DEFAULT_BENCHMARK_TRANSFORMS_JSON,
+    center_xyz_um: Tuple[float, float, float] = (0.0, 0.0, 0.0),
+    include_zenodo_8bit_crop_offset: bool = False,
+) -> Tuple[BasecoatSimilarityTransform3D, Dict[str, Any]]:
+    """Load the frozen Zn-13X-Bench 7-DOF similarity transform as a `basecoat.SimilarityTransform3D`."""
+    key = _TRACK_ALIASES.get(track.strip().lower(), track.strip())
+    data = json.loads(Path(transforms_json).read_text(encoding="utf-8"))
+    if key not in data["tracks"]:
+        raise KeyError(f"Unknown T1 track '{track}'. Available tracks: {sorted(data['tracks'].keys())}")
+    meta = dict(data["tracks"][key])
+
+    euler = [float(v) for v in meta["euler_xyz_rad"]]
+    tx, ty, tz = [float(v) for v in meta["fine_translation_xyz_um"]]
+    if include_zenodo_8bit_crop_offset:
+        cz, cy, cx = [float(v) for v in meta["zenodo_8bit_crop_offset_zyx_um"]]
+        tx += cx
+        ty += cy
+        tz += cz
+
+    bc_tfm = BasecoatSimilarityTransform3D.from_euler_xyz(
+        euler_xyz_rad=euler,
+        scale=float(meta["fitted_scale_factor_lr_over_hr_nom"]),
+        translation_xyz=(tx, ty, tz),
+        center_xyz=[float(c) for c in center_xyz_um],
+        from_space=f"i13_{meta.get('hr_scan', 'hr')}",
+        to_space=f"i13_{meta.get('lr_scan', 'lr')}",
+        unit="um",
+    )
+    return bc_tfm, meta
+
+
 def load_benchmark_7dof_transform(
     track: str = "2p026x",
     transforms_json: Path | str = DEFAULT_BENCHMARK_TRANSFORMS_JSON,
@@ -55,30 +88,13 @@ def load_benchmark_7dof_transform(
     include_zenodo_8bit_crop_offset: bool = False,
 ) -> Tuple[SimilarityTransform3D, Dict[str, Any]]:
     """Load the frozen Zn-13X-Bench 7-DOF similarity transform for an I13-2 ladder track."""
-    key = _TRACK_ALIASES.get(track.strip().lower(), track.strip())
-    data = json.loads(Path(transforms_json).read_text(encoding="utf-8"))
-    if key not in data["tracks"]:
-        raise KeyError(f"Unknown T1 track '{track}'. Available tracks: {sorted(data['tracks'].keys())}")
-    meta = dict(data["tracks"][key])
-
-    euler = meta["euler_xyz_rad"]
-    s3d = sitk.Similarity3DTransform()
-    s3d.SetCenter([float(c) for c in center_xyz_um])
-    # Convert small-angle Euler (rx, ry, rz) to unit versor via SimpleITK Euler3DTransform matrix
-    e3d = sitk.Euler3DTransform()
-    e3d.SetRotation(float(euler[0]), float(euler[1]), float(euler[2]))
-    s3d.SetMatrix(e3d.GetMatrix())
-    s3d.SetScale(float(meta["fitted_scale_factor_lr_over_hr_nom"]))
-
-    tx, ty, tz = [float(v) for v in meta["fine_translation_xyz_um"]]
-    if include_zenodo_8bit_crop_offset:
-        cz, cy, cx = [float(v) for v in meta["zenodo_8bit_crop_offset_zyx_um"]]
-        tx += cx
-        ty += cy
-        tz += cz
-    s3d.SetTranslation([tx, ty, tz])
-    tfm = SimilarityTransform3D.from_sitk(s3d)
-    return tfm, meta
+    bc_tfm, meta = load_benchmark_basecoat_transform(
+        track=track,
+        transforms_json=transforms_json,
+        center_xyz_um=center_xyz_um,
+        include_zenodo_8bit_crop_offset=include_zenodo_8bit_crop_offset,
+    )
+    return SimilarityTransform3D.from_basecoat(bc_tfm), meta
 
 
 def resample_with_benchmark_transform(
@@ -94,7 +110,7 @@ def resample_with_benchmark_transform(
     cx = 0.5 * (hr_shape_zyx[2] - 1) * float(hr_nominal_voxel_um)
     cy = 0.5 * (hr_shape_zyx[1] - 1) * float(hr_nominal_voxel_um)
     cz = 0.5 * (hr_shape_zyx[0] - 1) * float(hr_nominal_voxel_um)
-    tfm, meta = load_benchmark_7dof_transform(
+    bc_tfm, meta = load_benchmark_basecoat_transform(
         track=track,
         transforms_json=transforms_json,
         center_xyz_um=(cx, cy, cz),
@@ -105,7 +121,7 @@ def resample_with_benchmark_transform(
         moving_spacing_zyx_um=(float(lr_nominal_voxel_um),) * 3,
         fixed_shape_zyx=hr_shape_zyx,
         fixed_spacing_zyx_um=(float(hr_nominal_voxel_um),) * 3,
-        transform=tfm,
+        transform=bc_tfm,
     )
     return lr_on_hr, meta
 
