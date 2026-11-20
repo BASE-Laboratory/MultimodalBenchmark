@@ -119,3 +119,38 @@ def test_no_direct_zarr_or_numcodecs_imports_outside_tests() -> None:
                     if node.module.split(".")[0] in ("zarr", "numcodecs"):
                         offenders.append(f"{py.relative_to(repo_root)}:{node.lineno}")
     assert not offenders, f"Direct zarr/numcodecs imports found in production modules (delegate to basecoat): {offenders}"
+
+
+def test_evaluator_scores_ome_zarr_data_contract_stores_directly(tmp_path: Path) -> None:
+    from basecoat import Volume, write_ome_zarr
+    from multimodal_benchmark.evaluator import evaluate_bundles, load_bundle
+
+    rng = np.random.default_rng(7)
+    ref_arr = (50.0 + 20.0 * rng.random((24, 24, 24))).astype(np.float32)
+    pred_arr = (ref_arr + rng.normal(0.0, 1.0, size=ref_arr.shape)).astype(np.float32)
+
+    ref_store = write_ome_zarr(
+        Volume.from_array(ref_arr, voxel_size_um=0.8006, provenance={"zn13x_bench": {"reference_track": "raw_float32"}}),
+        tmp_path / "ref_t1.ome.zarr",
+    )
+    pred_store = write_ome_zarr(
+        Volume.from_array(pred_arr, voxel_size_um=0.8006),
+        tmp_path / "pred_t1.ome.zarr",
+    )
+
+    ref_b = load_bundle(ref_store)
+    pred_b = load_bundle(pred_store)
+    assert np.isclose(ref_b["_calibrated_voxel_size_um"], 0.8006)
+    res = evaluate_bundles("t1", pred_b, ref_b, method_name="OMEZarrTool", with_transport=False, bootstrap_samples=20)
+    assert res["metrics"]["psnr_db"] > 20.0
+    assert res["reference_track"] == "raw_float32"
+
+
+def test_extract_benchmark_tracks_uses_basecoat_cell_centre_coarsening() -> None:
+    from preprocessing.extract_benchmark_tracks import build_ome_ngff_multiscales_attrs
+
+    ngff = build_ome_ngff_multiscales_attrs("zn13x_t1_2p026x", voxel_size_um=0.8006)
+    lite_tfms = ngff["multiscales"][0]["datasets"][1]["coordinateTransformations"]
+    assert lite_tfms[0] == {"type": "scale", "scale": [4.0 * 0.8006] * 3}
+    # 4x block averaging shifts index-0 cell centre by 0.5 * (4 - 1) * v = 1.5 * v
+    assert np.allclose(lite_tfms[1]["translation"], [1.5 * 0.8006] * 3)

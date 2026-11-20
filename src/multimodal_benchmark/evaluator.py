@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 import h5py
 import numpy as np
+from basecoat import read_ome_zarr
 
 from .metrics import (
     compute_image_sr_metrics,
@@ -22,13 +23,41 @@ from registration.xrdct_reference import compute_2d_frc
 from tasks.definitions import validate_submission_arrays
 
 
-def load_bundle(path: Path | str) -> Dict[str, np.ndarray]:
-    """Load a dictionary of named arrays from either a .npz or .h5/.hdf5/.nxs submission file."""
+def load_bundle(path: Path | str) -> Dict[str, Any]:
+    """Load a submission/reference bundle from an OME-Zarr store (`.ome.zarr`/`.zarr`), `.npz`, or `.h5`/`.nxs`."""
     p = Path(path)
+    if p.is_dir() or p.name.lower().endswith((".ome.zarr", ".zarr")):
+        vset = read_ome_zarr(p, as_set=True)
+        img = vset.image
+        bundle: Dict[str, Any] = {}
+        if img.is_calibrated:
+            bundle["_calibrated_voxel_size_um"] = float(img.spacing_in("um")[0])
+        prov_bench = img.provenance.get("zn13x_bench")
+        if isinstance(prov_bench, Mapping) and "reference_track" in prov_bench:
+            bundle["track"] = str(prov_bench["reference_track"])
+
+        if img.axis_names and img.axis_names[0] == "c" and img.shape[0] >= 2:
+            bundle["zn"] = np.asarray(img.data[0])
+            bundle["na"] = np.asarray(img.data[1])
+            if img.shape[0] >= 4:
+                bundle["zn_sigma2"] = np.asarray(img.data[2])
+                bundle["na_sigma2"] = np.asarray(img.data[3])
+        elif np.issubdtype(img.dtype, np.integer):
+            bundle["labels"] = np.asarray(img.data)
+        else:
+            bundle["pred"] = np.asarray(img.data)
+            bundle["recon"] = np.asarray(img.data)
+
+        for lbl_key, lbl_vol in vset.labels.items():
+            bundle[lbl_key] = np.asarray(lbl_vol.data)
+            if lbl_key != "mask" and "labels" not in bundle:
+                bundle["labels"] = np.asarray(lbl_vol.data)
+        return bundle
+
     if p.suffix.lower() == ".npz":
         with np.load(p, allow_pickle=False) as data:
             return {k: np.asarray(data[k]) for k in data.files}
-    out: Dict[str, np.ndarray] = {}
+    out: Dict[str, Any] = {}
     with h5py.File(p, "r") as h5f:
 
         def _collect(name: str, obj: object) -> None:
@@ -58,8 +87,8 @@ def bootstrap_ci_95(values: Sequence[float], n_boot: int = 500, seed: int = 42) 
 
 def evaluate_bundles(
     task_id: str,
-    pred_bundle: Mapping[str, np.ndarray],
-    ref_bundle: Mapping[str, np.ndarray],
+    pred_bundle: Mapping[str, Any],
+    ref_bundle: Mapping[str, Any],
     method_name: str = "candidate",
     voxel_size_um: Optional[float] = None,
     with_transport: bool = True,
@@ -72,9 +101,14 @@ def evaluate_bundles(
     mask = ref_bundle.get("mask")
     metrics: Dict[str, float] = {}
     ci95: Dict[str, Dict[str, float]] = {}
+    inferred_vox = (
+        voxel_size_um
+        if voxel_size_um is not None
+        else ref_bundle.get("_calibrated_voxel_size_um", pred_bundle.get("_calibrated_voxel_size_um"))
+    )
 
     if spec.task_id == "t1":
-        vox = voxel_size_um if voxel_size_um is not None else 0.8006
+        vox = float(inferred_vox) if inferred_vox is not None else 0.8006
         pred = pred_bundle["pred"]
         ref = ref_bundle["pred"]
         metrics.update(compute_image_sr_metrics(pred, ref, mask=mask, voxel_size_um=vox))
@@ -162,7 +196,7 @@ def evaluate_bundles(
             metrics["reduced_chi2"] = float(np.mean(chi2s))
 
     elif spec.task_id == "t4a":
-        vox = voxel_size_um if voxel_size_um is not None else 0.54
+        vox = float(inferred_vox) if inferred_vox is not None else 0.54
         pred_lbl = pred_bundle["labels"]
         ref_lbl = ref_bundle["labels"]
         metrics.update(compute_segmentation_metrics(pred_lbl, ref_lbl, class_names=spec.classes, mask=mask))
