@@ -209,3 +209,36 @@ def align_openlsrx_7dof_pair(
         transform=reg_res.transform,
     )
     return lr_resampled_on_hr, hr, reg_res.to_dict()
+
+
+def export_openlsrx_pair_ome_zarr(
+    lr_zyx: np.ndarray,
+    hr_zyx: np.ndarray,
+    out_dir: Path | str,
+    *,
+    lr_voxel_um: float = 1.625,
+    hr_voxel_um: float = 0.8006,
+    track: str = "2p026x",
+    reference_track: str = "raw_float32",
+    overwrite: bool = True,
+) -> Tuple[Path, Path]:
+    """Write calibrated LR and HR ``.ome.zarr`` stores ready for ``openlsrx predict-volume`` and ``mmbench-evaluate``."""
+    from basecoat import Volume, write_ome_zarr
+
+    dest = Path(out_dir)
+    dest.mkdir(parents=True, exist_ok=True)
+    lr_vol = Volume.from_array(
+        np.asarray(lr_zyx, dtype=np.float32),
+        voxel_size_um=float(lr_voxel_um),
+        space=f"zn13x_{track}_lr",
+        provenance={"zn13x_bench": {"track": track, "reference_track": reference_track}},
+    )
+    hr_vol = Volume.from_array(
+        np.asarray(hr_zyx, dtype=np.float32),
+        voxel_size_um=float(hr_voxel_um),
+        space=f"zn13x_{track}_hr",
+        provenance={"zn13x_bench": {"track": track, "reference_track": reference_track}},
+    )
+    lr_store = write_ome_zarr(lr_vol, dest / f"{track}_lr.ome.zarr", overwrite=overwrite)
+    hr_store = write_ome_zarr(hr_vol, dest / f"{track}_hr.ome.zarr", overwrite=overwrite)
+    return lr_store, hr_store

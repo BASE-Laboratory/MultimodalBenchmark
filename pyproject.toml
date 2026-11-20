@@ -31,8 +31,8 @@ keywords = [
   "openimpala",
 ]
 dependencies = [
-  # Swap to "basecoat>=0.1.0,<0.2.0" once PyPI Trusted Publisher is enabled on BASE-Laboratory/basecoat
-  "basecoat @ git+https://github.com/BASE-Laboratory/basecoat.git@v0.1.0",
+  # Swap to "basecoat>=0.3.0,<0.4.0" once PyPI Trusted Publisher is enabled on BASE-Laboratory/basecoat
+  "basecoat @ git+https://github.com/BASE-Laboratory/basecoat.git@v0.3.0",
   "numpy>=1.26",
   "scipy>=1.11",
   "scikit-image>=0.21",
@@ -49,6 +49,9 @@ registration = [
 transport = [
   "openimpala>=4.6.0,<6.0.0",
 ]
+# Note: structural_mechanics_solver (sms) is currently a private BASE-Laboratory repository;
+# install from a local or authenticated checkout (`pip install -e ../structural_mechanics_solver`)
+# until sms is published publicly.
 notebooks = [
   "matplotlib>=3.7",
   "jupyter>=1.0",

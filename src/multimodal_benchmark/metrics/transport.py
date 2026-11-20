@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import numpy as np
 from skimage.filters import threshold_otsu
@@ -48,23 +48,30 @@ def compute_openimpala_transport_metrics(
 ) -> Dict[str, float]:
     """Compute 3-axis percolation, porosity, D_eff/D_0, tortuosity, and SSA via OpenImpala."""
     import openimpala as oi
+    from basecoat import Volume
 
     data = np.asarray(binary_pore_zyx, dtype=np.uint8)
     solid_phase_id = 0 if pore_phase_id == 1 else 1
+    use_vol_proto = hasattr(oi, "VolumeProtocol")
+    vol_in: Any = Volume.from_array(data, voxel_size_um=float(voxel_size_m) * 1e6) if use_vol_proto else data
 
     with oi.Session():
-        vf_res = oi.volume_fraction(data, phase=pore_phase_id)
+        vf_res = oi.volume_fraction(vol_in, phase=pore_phase_id)
         eps = float(vf_res.fraction)
 
         perc = {}
         taus = {}
         deffs = {}
         for axis in ("x", "y", "z"):
-            pc = oi.percolation_check(data, phase=pore_phase_id, direction=axis)
+            pc = oi.percolation_check(vol_in, phase=pore_phase_id, direction=axis)
             perc[axis] = bool(pc.percolates)
             if pc.percolates:
                 try:
-                    t_res = oi.tortuosity(data, phase=pore_phase_id, direction=axis, voxel_size=voxel_size_m)
+                    t_res = (
+                        oi.tortuosity(vol_in, phase=pore_phase_id, direction=axis)
+                        if use_vol_proto
+                        else oi.tortuosity(data, phase=pore_phase_id, direction=axis, voxel_size=voxel_size_m)
+                    )
                     taus[axis] = float(t_res.tortuosity)
                     deffs[axis] = float(t_res.effective_diffusivity)
                 except Exception:
@@ -76,11 +83,15 @@ def compute_openimpala_transport_metrics(
 
         dxx, dyy, dzz = deffs["x"], deffs["y"], deffs["z"]
 
-        ssa_res = oi.specific_surface_area(
-            data,
-            phase_a=pore_phase_id,
-            phase_b=solid_phase_id,
-            voxel_size=voxel_size_m,
+        ssa_res = (
+            oi.specific_surface_area(vol_in, phase_a=pore_phase_id, phase_b=solid_phase_id)
+            if use_vol_proto
+            else oi.specific_surface_area(
+                data,
+                phase_a=pore_phase_id,
+                phase_b=solid_phase_id,
+                voxel_size=voxel_size_m,
+            )
         )
 
     finite_taus = [v for v in taus.values() if np.isfinite(v) and v > 0]

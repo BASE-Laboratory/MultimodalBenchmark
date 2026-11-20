@@ -99,3 +99,46 @@ def load_xfuse_benchmark_t2_bundle(
 
 # Backward-compatible alias
 load_xfuse_benchmark_t3_bundle = load_xfuse_benchmark_t2_bundle
+
+
+def export_xfuse_t2_fold_ome_zarr(
+    bundle: Dict[str, Any],
+    out_dir: Path | str,
+    *,
+    hr_voxel_um: float = 0.54,
+    guide_voxel_um: float = 25.0,
+    overwrite: bool = True,
+) -> Dict[str, Any]:
+    """Package a Task T2 LOSO fold dictionary as calibrated ``.ome.zarr`` stores for ``xfuse fuse-3d``."""
+    from basecoat import AxisSpec, Volume, write_ome_zarr
+
+    dest = Path(out_dir)
+    dest.mkdir(parents=True, exist_ok=True)
+    written: Dict[str, Any] = {"guide_slices": {}}
+
+    if "diad_xct_zyx" in bundle:
+        hr_vol = Volume.from_array(
+            np.asarray(bundle["diad_xct_zyx"], dtype=np.float32),
+            voxel_size_um=float(hr_voxel_um),
+            space="diad_xct_0p54um",
+        )
+        written["hr_volume_store"] = write_ome_zarr(
+            hr_vol, dest / "diad_xct_hr.ome.zarr", overwrite=overwrite
+        )
+
+    for sid, maps in bundle.get("train_25um_slices", {}).items():
+        stack_cyx = np.stack(
+            [np.asarray(maps["zn"], dtype=np.float32), np.asarray(maps["na"], dtype=np.float32)],
+            axis=0,
+        )
+        axes = (
+            AxisSpec(name="c", kind="channel", unit="none"),
+            AxisSpec(name="y", kind="space", unit="um", scale=float(guide_voxel_um)),
+            AxisSpec(name="x", kind="space", unit="um", scale=float(guide_voxel_um)),
+        )
+        g_vol = Volume(stack_cyx, axes=axes, space="diad_xrdct_25um")
+        written["guide_slices"][int(sid)] = write_ome_zarr(
+            g_vol, dest / f"guide_25um_{int(sid)}.ome.zarr", multiscale_levels=1, overwrite=overwrite
+        )
+
+    return written

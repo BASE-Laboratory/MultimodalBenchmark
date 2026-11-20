@@ -13,6 +13,7 @@ from basecoat import read_ome_zarr
 
 from .metrics import (
     compute_image_sr_metrics,
+    compute_mechanics_discrepancy,
     compute_noise_normalized_chi2,
     compute_segmentation_metrics,
     compute_t2_fusion_metrics,
@@ -50,8 +51,11 @@ def load_bundle(path: Path | str) -> Dict[str, Any]:
 
         for lbl_key, lbl_vol in vset.labels.items():
             bundle[lbl_key] = np.asarray(lbl_vol.data)
-            if lbl_key != "mask" and "labels" not in bundle:
+            if lbl_key not in ("mask", "phase_lower", "phase_upper") and "labels" not in bundle:
                 bundle["labels"] = np.asarray(lbl_vol.data)
+
+        for unc_key, unc_vol in vset.uncertainties.items():
+            bundle[unc_key] = np.asarray(unc_vol.data)
         return bundle
 
     if p.suffix.lower() == ".npz":
@@ -92,6 +96,7 @@ def evaluate_bundles(
     method_name: str = "candidate",
     voxel_size_um: Optional[float] = None,
     with_transport: bool = True,
+    with_mechanics: bool = False,
     report_threshold_sensitivity: bool = True,
     bootstrap_samples: int = 200,
 ) -> Dict[str, Any]:
@@ -121,6 +126,16 @@ def evaluate_bundles(
                     voxel_size_um=vox,
                     mask=mask,
                     report_threshold_sensitivity=report_threshold_sensitivity,
+                )
+            )
+        if with_mechanics and ref.ndim == 3:
+            metrics.update(
+                compute_mechanics_discrepancy(
+                    pred,
+                    ref,
+                    inputs_are_grayscale=True,
+                    voxel_size_um=vox,
+                    mask=mask,
                 )
             )
         if bootstrap_samples > 0 and ref.ndim == 3 and ref.shape[0] >= 4:
@@ -209,6 +224,21 @@ def evaluate_bundles(
                     voxel_size_um=vox,
                 )
             )
+        if with_mechanics and ref_lbl.ndim == 3:
+            p_lo = pred_bundle.get("phase_lower")
+            p_hi = pred_bundle.get("phase_upper")
+            solid_lo = (np.asarray(p_lo) > 0).astype(np.uint8) if p_lo is not None else None
+            solid_hi = (np.asarray(p_hi) > 0).astype(np.uint8) if p_hi is not None else None
+            metrics.update(
+                compute_mechanics_discrepancy(
+                    (pred_lbl > 0).astype(np.uint8),
+                    (ref_lbl > 0).astype(np.uint8),
+                    inputs_are_grayscale=False,
+                    voxel_size_um=vox,
+                    pred_solid_lower=solid_lo,
+                    pred_solid_upper=solid_hi,
+                )
+            )
 
     return {
         "task": spec.task_id,
@@ -238,11 +268,25 @@ def format_markdown_leaderboard_row(result: Mapping[str, Any]) -> str:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Score a Zn-13X-Bench submission (T1, T2, T3, or optional T4).")
     parser.add_argument("--task", required=True, help="Task ID: t1, t2, t3, or t4")
-    parser.add_argument("--prediction", type=Path, required=True, help="Path to prediction .npz or .h5")
-    parser.add_argument("--reference", type=Path, required=True, help="Path to reference .npz or .h5")
+    parser.add_argument("--prediction", type=Path, required=True, help="Path to prediction .ome.zarr, .npz, or .h5")
+    parser.add_argument("--reference", type=Path, required=True, help="Path to reference .ome.zarr, .npz, or .h5")
     parser.add_argument("--method", default="candidate", help="Method name for leaderboard row")
     parser.add_argument("--voxel-size-um", type=float, default=None, help="Physical voxel size in um")
     parser.add_argument("--no-transport", action="store_true", help="Skip OpenImpala PDE transport metrics")
+    mech_grp = parser.add_mutually_exclusive_group()
+    mech_grp.add_argument(
+        "--with-mechanics",
+        action="store_true",
+        dest="with_mechanics",
+        help="Also compute SMS finite-volume linear elasticity effective modulus metrics",
+    )
+    mech_grp.add_argument(
+        "--no-mechanics",
+        action="store_false",
+        dest="with_mechanics",
+        help="Skip SMS mechanics metrics (default)",
+    )
+    parser.set_defaults(with_mechanics=False)
     parser.add_argument("--threshold-sensitivity", action="store_true", help="Report +/-5%% OpenImpala threshold sensitivity")
     parser.add_argument("--bootstrap-samples", type=int, default=200, help="Bootstrap resamples for 95%% CIs")
     parser.add_argument("--out-json", type=Path, default=None, help="Optional JSON output path")
@@ -258,6 +302,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         method_name=args.method,
         voxel_size_um=args.voxel_size_um,
         with_transport=not args.no_transport,
+        with_mechanics=bool(args.with_mechanics),
         report_threshold_sensitivity=args.threshold_sensitivity,
         bootstrap_samples=args.bootstrap_samples,
     )
