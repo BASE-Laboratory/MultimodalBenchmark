@@ -23,6 +23,11 @@ from .fusion import (
 from .registration_eval import (
     compute_t3_registration_metrics,
 )
+from .mechanics import (
+    compute_mechanics_discrepancy,
+    compute_sms_mechanics_metrics,
+    is_sms_available,
+)
 from .transport import (
     calibrate_frozen_pore_threshold,
     compute_openimpala_transport_metrics,
@@ -48,4 +53,7 @@ __all__ = [
     "calibrate_frozen_pore_threshold",
     "compute_openimpala_transport_metrics",
     "compute_transport_discrepancy",
+    "compute_mechanics_discrepancy",
+    "compute_sms_mechanics_metrics",
+    "is_sms_available",
 ]
