@@ -1,0 +1,93 @@
+{
+  "schema_version": "2.1.0",
+  "status": "provisional_8bit_preview_refit_required_on_float32",
+  "description": "7-DOF similarity transforms for the DLS I13-2 multi-magnification XCT ladder (Zn-13X-Bench Task T1). Current parameters were fitted on the Zenodo 14245751 8-bit preview sub-volumes (with 82% non-cupping radial mask) and MUST be refitted on the full 32-bit float Savu reconstructions (Zenodo 12206815, 13327651, 13327682, 13327692) before final leaderboard freeze.",
+  "cross_repo_reconciliation_note": "OpenLSR-X v0.2.1 (`src/openlsrx/data/zn13x_certified_regions.yaml`) records an earlier unmasked 8-bit preview fit giving Rung 1 = 1.6023x (scale 0.99855) and Rung 2 = 2.0276x (scale 0.98640), differing by 0.09-0.10% from the 82%-radial-masked fit below (1.6039x, 2.0258x). Both repos should point `--certified-regions` at `configs/i13_certified_regions.yaml` once refitted on full 32-bit float volumes.",
+  "ruby_sphere_calibration_note": "3D Cauchy metrology on the nominal 500 um ruby sphere agrees with 7-DOF pellet scale ratios to 0.04% (R_66/R_67 = 2.0251 vs 2.0258). Ball manufacturing tolerance (+/-dD/500 um) cancels identically in magnification ratios while propagating to absolute voxel sizes.",
+  "calibrated_voxel_sizes_um": {
+    "169068_1p25x": {
+      "nominal_um": 2.6,
+      "ruby_calibrated_um": 2.5945,
+      "turret": "[1] 1.25x 500um LuAG:Ce"
+    },
+    "169067_2x": {
+      "nominal_um": 1.625,
+      "ruby_calibrated_um": 1.6212,
+      "turret": "[2] 2x 500um LuAG S014"
+    },
+    "169066_4x": {
+      "nominal_um": 0.8125,
+      "ruby_calibrated_um": 0.8006,
+      "turret": "[4] 4x 100um LuAG:Ce S012"
+    },
+    "169065_10x": {
+      "nominal_um": 0.325,
+      "ruby_calibrated_um": 0.3211,
+      "turret": "[5] 10x 25um GGG:Eu S025"
+    }
+  },
+  "tracks": {
+    "1p604x": {
+      "role": "core",
+      "lr_scan": "169068",
+      "hr_scan": "169067",
+      "nominal_ratio": 1.6,
+      "true_magnification_ratio": 1.6039,
+      "openlsrx_v021_unmasked_preview_ratio": 1.6023,
+      "fitted_scale_factor_lr_over_hr_nom": 0.99757,
+      "euler_xyz_rad": [-0.00046, 0.00009, 0.00063],
+      "fine_translation_xyz_um": [-0.97, -0.355, -1.926],
+      "zenodo_8bit_crop_offset_zyx_um": [-403.0, 487.5, 487.5],
+      "residual_fiducial_vs_pellet_slip_um": 3.0
+    },
+    "2p026x": {
+      "role": "core_headline",
+      "lr_scan": "169067",
+      "hr_scan": "169066",
+      "nominal_ratio": 2.0,
+      "true_magnification_ratio": 2.0258,
+      "openlsrx_v021_unmasked_preview_ratio": 2.0276,
+      "fitted_scale_factor_lr_over_hr_nom": 0.98727,
+      "euler_xyz_rad": [-0.00112, -0.00095, -0.00063],
+      "fine_translation_xyz_um": [-5.284, -1.498, 2.345],
+      "zenodo_8bit_crop_offset_zyx_um": [-203.125, 377.0, 448.5],
+      "residual_fiducial_vs_pellet_slip_um": 1.9
+    },
+    "2p493x": {
+      "role": "core",
+      "lr_scan": "169066",
+      "hr_scan": "169065",
+      "nominal_ratio": 2.5,
+      "true_magnification_ratio": 2.4934,
+      "openlsrx_v021_unmasked_preview_ratio": 2.4924,
+      "fitted_scale_factor_lr_over_hr_nom": 1.00265,
+      "euler_xyz_rad": [0.00008, -0.00024, -0.00057],
+      "fine_translation_xyz_um": [0.512, -0.618, 0.088],
+      "zenodo_8bit_crop_offset_zyx_um": [-121.875, 204.75, 448.5]
+    },
+    "5p051x": {
+      "role": "core",
+      "lr_scan": "169067",
+      "hr_scan": "169065",
+      "nominal_ratio": 5.0,
+      "true_magnification_ratio": 5.0511,
+      "fitted_scale_factor_lr_over_hr_nom": 0.98989,
+      "euler_xyz_rad": [-0.00104, -0.00119, -0.0012],
+      "fine_translation_xyz_um": [-4.772, -2.116, 2.433],
+      "zenodo_8bit_crop_offset_zyx_um": [-325.0, 581.75, 897.0]
+    },
+    "8p101x": {
+      "role": "exploratory",
+      "exploratory_warning": "Direct 8x overlap spans only ~30x80x80 coarse voxels with direct Pearson r = 0.07 and a 2.4% scale discrepancy between direct and chained fits; demoted to exploratory.",
+      "lr_scan": "169068",
+      "hr_scan": "169065",
+      "nominal_ratio": 8.0,
+      "true_magnification_ratio": 8.1014,
+      "fitted_scale_factor_lr_over_hr_nom": 0.98749,
+      "euler_xyz_rad": [-0.0015, -0.0011, -0.00057],
+      "fine_translation_xyz_um": [-5.742, -2.471, 0.507],
+      "zenodo_8bit_crop_offset_zyx_um": [-728.0, 1069.25, 1384.5],
+      "composition_rule": "chained_adjacent_only_direct_fit_forbidden"
+    }
+  }
+}

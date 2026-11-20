@@ -1,0 +1,59 @@
+# Task T2 Chemical Fusion Baseline Matrix for BASE-Laboratory/X-FUSE v1.0.0
+# Uses X-FUSE's real `xfuse fuse` (zero-shot self-supervised forward-PSF 2D fusion on 50 um guide + 0.54 um XCT)
+# and `xfuse fuse-3d` (sparse-slice 3D propagation from the 3 LOSO training 25 um slices to the held-out slice).
+
+suite: xfuse
+prepared_slices_dir: "data/benchmarks/zn13x_t2_diad"
+seeds: [42, 137, 2026]
+epochs_2d: 25
+epochs_3d: 12
+device: "cuda"
+
+variants:
+  - name: "xfuse_2d_jbu_gating"
+    cli_subcommand: "fuse"
+    backbone: "dinov2_vits14"
+    fusion_method: "gating"
+    upsampler: "jbu"
+  - name: "xfuse_2d_cross_attn"
+    cli_subcommand: "fuse"
+    backbone: "dinov2_vits14"
+    fusion_method: "spatial_mlp"
+    upsampler: "cross_attn"
+  - name: "xfuse_3d_loso_triplane"
+    cli_subcommand: "fuse-3d"
+    backbone: "dinov2_vits14"
+
+loso_folds:
+  - fold_index: 0
+    test_25um_scan: 43324
+    matched_50um_scan: 43345
+    z_index_50um: 9
+    train_slices:
+      - {scan_25um: 43322, z_index_50um: 14}
+      - {scan_25um: 43323, z_index_50um: 17}
+      - {scan_25um: 43325, z_index_50um: 18}
+  - fold_index: 1
+    test_25um_scan: 43322
+    matched_50um_scan: 43395
+    z_index_50um: 14
+    train_slices:
+      - {scan_25um: 43324, z_index_50um: 9}
+      - {scan_25um: 43323, z_index_50um: 17}
+      - {scan_25um: 43325, z_index_50um: 18}
+  - fold_index: 2
+    test_25um_scan: 43323
+    matched_50um_scan: 43398
+    z_index_50um: 17
+    train_slices:
+      - {scan_25um: 43324, z_index_50um: 9}
+      - {scan_25um: 43322, z_index_50um: 14}
+      - {scan_25um: 43325, z_index_50um: 18}
+  - fold_index: 3
+    test_25um_scan: 43325
+    matched_50um_scan: 43399
+    z_index_50um: 18
+    train_slices:
+      - {scan_25um: 43324, z_index_50um: 9}
+      - {scan_25um: 43322, z_index_50um: 14}
+      - {scan_25um: 43323, z_index_50um: 17}

@@ -1,0 +1,38 @@
+# Virtual environments & caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Packaging
+build/
+dist/
+*.egg-info/
+
+# Local / Zenodo data caches & outputs
+data/raw/
+data/processed/
+data/cache/
+data/benchmark_v1/
+outputs/
+results/
+*.h5
+*.hdf
+*.hdf5
+*.zarr/
+*.tif
+*.tiff
+*.asc
+!DIAD_Savu/*.nxs
+!I13_2_Savu/*.nxs
+*.nxs
+
+# OS / IDE
+.DS_Store
+.ipynb_checkpoints/

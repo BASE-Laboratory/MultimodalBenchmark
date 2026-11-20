@@ -1,0 +1,415 @@
+# Canonical Zenodo & NeXus/HDF5 Dataset Manifest
+# Companion to Green et al., Scientific Data 12, 329 (2025)
+# https://doi.org/10.1038/s41597-025-04605-9
+
+schema_version: "2.0.0"
+dataset_name: "Zn-Doped Zeolite 13X Multimodal Synchrotron XCT & XRD-CT Benchmark"
+repository_url: "https://github.com/BASE-Laboratory/MultimodalBenchmark"
+paper:
+  title: "Three-dimensional, multimodal synchrotron data for machine learning applications"
+  authors:
+    - "Calum Green"
+    - "Sharif Ahmed"
+    - "Shashidhara Marathe"
+    - "Liam Perera"
+    - "Alberto Leonardi"
+    - "Killian Gmyrek"
+    - "Daniele Dini"
+    - "James Le Houx"
+  journal: "Scientific Data"
+  volume: 12
+  article: 329
+  year: 2025
+  doi: "10.1038/s41597-025-04605-9"
+  preprint_arxiv: "2409.07322"
+
+errata_notes:
+  broken_paper_doi:
+    cited_in_body_text: "10.5281/zenodo.13327988"
+    http_status: 404
+    resolved_doi: "10.5281/zenodo.13349402"
+    note: >
+      Body text of Green et al. (2025) cites 10.5281/zenodo.13327988 for the
+      reconstructed DIAD 0.54 um XCT volume, which returns HTTP 404 on Zenodo.
+      Reference 18 (10.5281/zenodo.13349402) is the active published record.
+  pixel_size_typo:
+    legacy_readme_value_um: 0.3125
+    true_value_um: 0.325
+    scan_id: "169065"
+  xrdct_scan_inventory:
+    note: >
+      Zenodo record 13329639 contains FOUR 25 um XRD-CT sinogram scans
+      (k11-43322 with 79 projections; k11-43323, k11-43324, k11-43325 with 80 projections)
+      plus pre-reconstructed multi-peak NeXus maps output_43322..43325_{na,zn}.nxs,
+      and TWENTY-ONE 50 um sinogram scans across two non-contiguous scan blocks
+      (k11-43336..43347 and k11-43393..43401; output_*_{na,zn}.nxs present for 43336..43347 and 43393..43400).
+  xrdct_50um_motor_zero_rotation:
+    gts_cs_theta_25um_deg: [0.0, 360.0]
+    gts_cs_theta_50um_deg: [-47.5, 312.5]
+    legacy_50um_correction_deg: 47.5
+    matched_50um_indices_for_25um:
+      "43324": {"index": 9, "scan_id": 43345, "zn_phase_fraction_calibrated": 0.991, "zn_na_ratio_legacy": 2.597}
+      "43322": {"index": 14, "scan_id": 43395, "zn_phase_fraction_calibrated": 0.624, "zn_na_ratio_legacy": 0.901}
+      "43323": {"index": 17, "scan_id": 43398, "zn_phase_fraction_calibrated": 0.252, "zn_na_ratio_legacy": 0.686}
+      "43325": {"index": 18, "scan_id": 43399, "zn_phase_fraction_calibrated": 0.096, "zn_na_ratio_legacy": 0.731}
+    note: >
+      Between k11-43325 (25 um) and k11-43336 (50 um), the gts_cs_theta soft-motor zero was shifted by -47.5 deg
+      while keeping the physical sample start orientation identical (mean-subtracted sinogram r = 0.9956 between
+      k11-43324 and k11-43345 at frame 0). Passing gts_cs_theta directly to tomopy.recon rotated all published
+      output_43336..43400_{na,zn}.nxs slices by -47.5 deg relative to the 25 um ROI maps. Furthermore, kb_cs_x
+      spans [377.72, 2183.28] DIAD 0.54 um XCT pixels (center 1280.50 px, span 975.0 um -> 25.00 um step at 40
+      translations, 51.316 um step at 20 translations), and Rigaku Cu-Ka powder references exhibit a -0.00125 A^-1
+      zero-point q-shift relative to the DIAD Pilatus3X CdTe q-grid. Zenodo DAWN 2.33.0 exports contain only /processed
+      (kb_cs_y fixed at 1080.0 px); raw /entry vertical stage motors reside in /dls/k11/data/2024/mg32980-1/nexus/k11-43322..43401.nxs.
+  i13_turret_scale_and_stage_audit:
+    diamond_visit: "mg32980-2"
+    stage_sample_xyz_um: [600.0, 1600.0, -2250.0]
+    max_stage_encoder_delta_um: 0.4
+    calibrated_voxel_sizes_from_500um_ruby_sphere:
+      "169068": {"nominal_um": 2.6, "calibrated_um": 2.5945, "error_pct": -0.21, "turret": "[1] 1.25x 500um LuAG:Ce"}
+      "169067": {"nominal_um": 1.625, "calibrated_um": 1.6212, "error_pct": -0.23, "turret": "[2] 2x 500um LuAG S014"}
+      "169066": {"nominal_um": 0.8125, "calibrated_um": 0.8006, "error_pct": -1.47, "turret": "[4] 4x 100um LuAG:Ce S012"}
+      "169065": {"nominal_um": 0.325, "calibrated_um": 0.3211, "error_pct": -1.20, "turret": "[5] 10x 25um GGG:Eu S025 (chained)"}
+    note: >
+      NeXus nominal pixel sizes (2.6, 1.625, 0.8125, 0.325 um) equal textbook 6.5 um / (2 * M_obj). Switching from 500 um LuAG
+      turrets ([1],[2]) to thin 100 um LuAG / 25 um GGG turrets ([4],[5]) shifts true optical magnification by +1.25% to +1.47%,
+      explaining the -1.27% fitted scale factor on Rung 2 (1.625 -> 0.8125 um, true ratio ~2.026x).
+
+sample_fiducials:
+  capillary:
+    material: "borosilicate_glass"
+    outer_diameter_um: 1000.0
+  pellet:
+    material: "Zn-doped Zeolite 13X (binderless)"
+    phases: ["Pore", "Na-13X", "Zn-13X"]
+    characteristic_doublet_q_inv_angstrom:
+      na_13x: 1.651
+      zn_13x: 1.656
+  calibration_spheres:
+    ruby_sphere_diameter_um: 500.0
+    nist_borosilicate_beads_diameter_range_um: [100.0, 400.0]
+
+records:
+  powder_xrd:
+    record_id: "13329670"
+    concept_id: "13329669"
+    doi: "10.5281/zenodo.13329670"
+    beamline: "Lab Rigaku SmartLab (Cu-Kalpha, lambda=1.5406 A)"
+    modality: "Powder XRD"
+    total_size_mb: 0.38
+    files:
+      - name: "13Xhighres_2-Theta_Omega.asc"
+        size_mb: 0.07
+        md5: "8c2a4e4dc53892e8f444513ad8494d89"
+        role: "pure_na_13x_reference"
+      - name: "Zn13X15minhighres_2-Theta_Omega.asc"
+        size_mb: 0.07
+        md5: "523d706cae8985d6ba855abb321eb3a8"
+        role: "partially_zn_doped_13x"
+      - name: "Zn13Xhighres_2-Theta_Omega.asc"
+        size_mb: 0.07
+        md5: "10e321ca90845e34fd2a2391d792e4b6"
+        role: "fully_zn_doped_13x_reference"
+      - name: "empty_cap_2-Theta_Omega.asc"
+        size_mb: 0.07
+        md5: "1cb81e50a1abddd19c8c44dd3c8b6599"
+        role: "borosilicate_capillary_background"
+      - name: "XRD_Analysis_ascii.ipynb"
+        size_mb: 0.10
+        md5: "b015a1e01ee7b34ec46e609780d12e96"
+        role: "notebook"
+
+  diad_xrdct:
+    record_id: "13329639"
+    concept_id: "13329638"
+    doi: "10.5281/zenodo.13329639"
+    beamline: "DLS K11 (DIAD)"
+    modality: "XRD-CT"
+    total_size_mb: 3775.20
+    hdf5_paths:
+      sinogram_data: "processed/result/data"
+      q_axis: "processed/result/q"
+      rotation_angle: "entry/diffraction_sum/gts_cs_theta"
+      peak_maps_prefix: "entry/peak at q~"
+    scans_25um:
+      pixel_size_um: 25.0
+      beam_spot_um: 25.0
+      translation_steps: 40
+      recon_shape_yx: [40, 40]
+      scan_ids: [43322, 43323, 43324, 43325]
+      files:
+        - name: "k11-43322-diffraction-DiffInt_Mask_Azz_Txt.nxs"
+          scan_id: 43322
+          projections: 79
+          sinogram_shape: [5000, 79, 40]
+          size_mb: 402.10
+          md5: "b43197688ec5e83b99bab346b0087289"
+        - name: "k11-43323-diffraction-DiffInt_Mask_Azz_Txt.nxs"
+          scan_id: 43323
+          projections: 80
+          sinogram_shape: [5000, 80, 40]
+          size_mb: 406.95
+          md5: "d6f2c853e2181c8d25af1c11cfe66bda"
+        - name: "k11-43324-diffraction-DiffInt_Mask_Azz_Txt.nxs"
+          scan_id: 43324
+          projections: 80
+          sinogram_shape: [5000, 80, 40]
+          size_mb: 406.88
+          md5: "80b85b518bfdfb4a398fa7f366241a9c"
+        - name: "k11-43325-diffraction-DiffInt_Mask_Azz_Txt.nxs"
+          scan_id: 43325
+          projections: 80
+          sinogram_shape: [5000, 80, 40]
+          size_mb: 406.94
+          md5: "0fc5dd09bc63e0dd5662d9388f3bcc2c"
+        - name: "output_43322_na.nxs"
+          size_mb: 0.10
+          md5: "7f3d10fecc7ecc497278de1816bbc054"
+        - name: "output_43322_zn.nxs"
+          size_mb: 0.09
+          md5: "7fa56d97685614b48eed5843b5d1f1ae"
+        - name: "output_43323_na.nxs"
+          size_mb: 0.10
+          md5: "b462a856092c0164a23c8995e3a00d54"
+        - name: "output_43323_zn.nxs"
+          size_mb: 0.09
+          md5: "dbb32d706d1ab3a3bc0c5c548330ffc7"
+        - name: "output_43324_na.nxs"
+          size_mb: 0.10
+          md5: "2575f501e0cb0d98d8eb6f8f0c696f63"
+        - name: "output_43324_zn.nxs"
+          size_mb: 0.09
+          md5: "ad1aa8b246fd6921ea50e0258421f0b9"
+        - name: "output_43325_na.nxs"
+          size_mb: 0.10
+          md5: "6628302288611178936b8a961d1e2e49"
+        - name: "output_43325_zn.nxs"
+          size_mb: 0.09
+          md5: "f5a75e24e10c50e02ad7693ed6922b6b"
+    scans_50um:
+      pixel_size_um: 50.0
+      beam_spot_um: 50.0
+      axial_z_step_um: 50.0
+      translation_steps: 20
+      projections: 40
+      sinogram_shape: [5000, 40, 20]
+      recon_shape_yx: [20, 20]
+      scan_ids_with_output_nxs: [43336, 43337, 43338, 43339, 43340, 43341, 43342, 43343, 43344, 43345, 43346, 43347, 43393, 43394, 43395, 43396, 43397, 43398, 43399, 43400]
+      extra_sinogram_only_scan_ids: [43401]
+
+  diad_xct_recon:
+    record_id: "13349402"
+    concept_id: "13349401"
+    doi: "10.5281/zenodo.13349402"
+    replaces_broken_doi: "10.5281/zenodo.13327988"
+    beamline: "DLS K11 (DIAD)"
+    scan_id: "k11-43334"
+    modality: "XCT (Reconstructed)"
+    voxel_size_um: [0.54, 0.54, 0.54]
+    volume_shape_zyx: [2160, 2560, 2560]
+    fov_mm_xz: [1.38, 1.17]
+    dtype: "float32"
+    hdf5_dataset: "4-AstraReconGpu-tomo/data"
+    chirality_note: "AstraReconGpu x-axis is mirrored relative to TomoPy gridrec (requires flip_x audit against XRD-CT)."
+    files:
+      - name: "tomo_p4_astra_recon_gpu.h5"
+        size_mb: 57042.54
+        md5: "cd87510d13dbc11cfbb6add68f9934f9"
+      - name: "k11-43334_processed.nxs"
+        size_mb: 0.97
+        md5: "5ad6cda95da23990c0a19597e48aa136"
+
+  diad_xct_raw:
+    record_id: "13329625"
+    concept_id: "13329624"
+    doi: "10.5281/zenodo.13329625"
+    beamline: "DLS K11 (DIAD)"
+    scan_id: "k11-43334"
+    modality: "XCT (Raw Projections)"
+    voxel_size_um: [0.54, 0.54, 0.54]
+    projections: 5000
+    files:
+      - name: "k11-43334-imaging.h5"
+        size_mb: 57508.13
+        md5: "579fa5ac71a95b2288d21df24bd0e32f"
+      - name: "savu_process_list_DIAD.nxs"
+        size_mb: 0.05
+        md5: "d1b4a4f13924b8986f7c748f9b531576"
+      - name: "DIAD_savu.txt"
+        size_mb: 0.00
+        md5: "80e7d585ddf0f4cc174789d72abc6310"
+
+  i13_xct_2p6um_recon:
+    record_id: "12206815"
+    concept_id: "12206814"
+    doi: "10.5281/zenodo.12206815"
+    beamline: "DLS I13-2"
+    scan_id: "169068"
+    modality: "XCT (Reconstructed)"
+    voxel_size_um: [2.6, 2.6, 2.6]
+    volume_shape_zyx: [2110, 2510, 2510]
+    fov_mm_xz: [6.70, 5.60]
+    dtype: "float32"
+    hdf5_dataset: "4-TomopyRecon-tomo/data"
+    files:
+      - name: "tomo_p4_tomopy_recon.h5"
+        size_mb: 53223.25
+        md5: "4fac2833776ff72636d5e489aae447a3"
+      - name: "169068_processed.nxs"
+        size_mb: 1.05
+        md5: "a4f9fd3433f3dc5b51cb8702aae9497a"
+
+  i13_xct_2p6um_raw:
+    record_id: "13327891"
+    concept_id: "13327890"
+    doi: "10.5281/zenodo.13327891"
+    beamline: "DLS I13-2"
+    scan_id: "169068"
+    modality: "XCT (Raw Projections)"
+    voxel_size_um: [2.6, 2.6, 2.6]
+    files:
+      - name: "pco1-169068.hdf"
+        size_mb: 45133.19
+        md5: "3cb191aaac4c05fbcbe63041e74fbdda"
+      - name: "169068.nxs"
+        size_mb: 0.27
+        md5: "d620d9c78bd8f4852bbafea0ddc83e41"
+
+  i13_xct_1p625um_recon:
+    record_id: "13327651"
+    concept_id: "13327650"
+    doi: "10.5281/zenodo.13327651"
+    beamline: "DLS I13-2"
+    scan_id: "169067"
+    modality: "XCT (Reconstructed)"
+    voxel_size_um: [1.625, 1.625, 1.625]
+    volume_shape_zyx: [2110, 2510, 2510]
+    fov_mm_xz: [4.20, 3.50]
+    dtype: "float32"
+    hdf5_dataset: "4-TomopyRecon-tomo/data"
+    files:
+      - name: "tomo_p4_tomopy_recon.h5"
+        size_mb: 53223.25
+        md5: "f992bee896f35503e2c75a6242f3f93f"
+      - name: "169067_processed.nxs"
+        size_mb: 1.05
+        md5: "89f15af1305689928dc0fba20da689aa"
+
+  i13_xct_1p625um_raw:
+    record_id: "13327931"
+    concept_id: "13327930"
+    doi: "10.5281/zenodo.13327931"
+    beamline: "DLS I13-2"
+    scan_id: "169067"
+    modality: "XCT (Raw Projections)"
+    voxel_size_um: [1.625, 1.625, 1.625]
+    files:
+      - name: "pco1-169067.hdf"
+        size_mb: 45133.19
+        md5: "abd5a288a27f5a19e65eb82a074bc127"
+      - name: "169067.nxs"
+        size_mb: 0.27
+        md5: "a19a07794fbfdc00e5d817325f77a871"
+
+  i13_xct_0p8125um_recon:
+    record_id: "13327682"
+    concept_id: "13327681"
+    doi: "10.5281/zenodo.13327682"
+    beamline: "DLS I13-2"
+    scan_id: "169066"
+    modality: "XCT (Reconstructed)"
+    voxel_size_um: [0.8125, 0.8125, 0.8125]
+    volume_shape_zyx: [2110, 2510, 2510]
+    fov_mm_xz: [2.10, 1.80]
+    dtype: "float32"
+    hdf5_dataset: "4-TomopyRecon-tomo/data"
+    files:
+      - name: "tomo_p4_tomopy_recon.h5"
+        size_mb: 53223.25
+        md5: "0ea73ab281dafaade0cd591f5e6f0478"
+      - name: "169066_processed.nxs"
+        size_mb: 1.05
+        md5: "f3ef87a9a63e6f1b2816c07c3c81cc8e"
+
+  i13_xct_0p8125um_raw:
+    record_id: "13327958"
+    concept_id: "13327957"
+    doi: "10.5281/zenodo.13327958"
+    beamline: "DLS I13-2"
+    scan_id: "169066"
+    modality: "XCT (Raw Projections)"
+    voxel_size_um: [0.8125, 0.8125, 0.8125]
+    files:
+      - name: "pco1-169066.hdf"
+        size_mb: 45133.19
+        md5: "370a50401818f5511942202216e20a11"
+      - name: "169066.nxs"
+        size_mb: 0.27
+        md5: "5bccd2fc1de787495262a9f9d10c3a36"
+
+  i13_xct_0p325um_recon:
+    record_id: "13327692"
+    concept_id: "13327691"
+    doi: "10.5281/zenodo.13327692"
+    beamline: "DLS I13-2"
+    scan_id: "169065"
+    modality: "XCT (Reconstructed, Local Tomography)"
+    voxel_size_um: [0.325, 0.325, 0.325]
+    volume_shape_zyx: [2110, 2510, 2510]
+    fov_mm_xz: [0.83, 0.70]
+    local_tomography_truncated: true
+    dtype: "float32"
+    hdf5_dataset: "4-TomopyRecon-tomo/data"
+    files:
+      - name: "tomo_p4_tomopy_recon.h5"
+        size_mb: 53223.25
+        md5: "85cf66887d1bf6444c33905a41063275"
+      - name: "169065_processed.nxs"
+        size_mb: 1.05
+        md5: "c474d628b05296c57010629674b306cc"
+
+  i13_xct_0p325um_raw:
+    record_id: "13327961"
+    concept_id: "13327960"
+    doi: "10.5281/zenodo.13327961"
+    beamline: "DLS I13-2"
+    scan_id: "169065"
+    modality: "XCT (Raw Projections)"
+    voxel_size_um: [0.325, 0.325, 0.325]
+    files:
+      - name: "pco1-169065.hdf"
+        size_mb: 45133.19
+        md5: "06f7dddb5ceef9e6e8f6c195f32801ad"
+      - name: "169065.nxs"
+        size_mb: 0.27
+        md5: "cbd18b52e965e2325ea76640fc84aac7"
+
+  i13_xct_8bit_subvolumes:
+    record_id: "14245751"
+    concept_id: "14245750"
+    doi: "10.5281/zenodo.14245751"
+    beamline: "DLS I13-2"
+    modality: "XCT (8-bit Cropped Sub-Volumes)"
+    dtype: "uint8"
+    note: "Lightweight 500 MB 8-bit preview sub-volumes. Official T1 quantitative scoring uses 32-bit float volumes with dynamic-range preservation."
+    files:
+      - name: "169068_8bit_cropped.h5"
+        scan_id: "169068"
+        voxel_size_um: 2.6
+        size_mb: 500.00
+        md5: "93e463ca5997dd4f5f220012b0304015"
+      - name: "169067_8bit_cropped.h5"
+        scan_id: "169067"
+        voxel_size_um: 1.625
+        size_mb: 500.00
+        md5: "f4e1eeff1dc9c82bc8a1c2e8eaead84d"
+      - name: "169066_8bit_cropped.h5"
+        scan_id: "169066"
+        voxel_size_um: 0.8125
+        size_mb: 500.00
+        md5: "ecb66e8eff72d4f96f2f90146addd553"
+      - name: "169065_8bit_cropped.h5"
+        scan_id: "169065"
+        voxel_size_um: 0.325
+        size_mb: 500.00
+        md5: "027236b9cef5fdfd74a95c8471c86d96"

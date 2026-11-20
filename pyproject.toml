@@ -1,0 +1,87 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multimodal-benchmark"
+version = "2.0.0"
+description = "Standardized multi-resolution synchrotron XCT + XRD-CT benchmark suite for super-resolution, correlative chemical fusion, segmentation, and OpenImpala transport physics."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+  { name = "James Le Houx", email = "j.lehoux@greenwich.ac.uk" },
+  { name = "Calum Green" },
+  { name = "Sharif Ahmed" },
+  { name = "Shashidhara Marathe" },
+  { name = "Liam Perera" },
+  { name = "Alberto Leonardi" },
+  { name = "Killian Gmyrek" },
+  { name = "Daniele Dini" },
+]
+keywords = [
+  "synchrotron",
+  "tomography",
+  "XCT",
+  "XRD-CT",
+  "super-resolution",
+  "multimodal-fusion",
+  "benchmark",
+  "zeolite-13X",
+  "openimpala",
+]
+dependencies = [
+  # Swap to "basecoat>=0.3.0,<0.4.0" once PyPI Trusted Publisher is enabled on BASE-Laboratory/basecoat
+  "basecoat @ git+https://github.com/BASE-Laboratory/basecoat.git@v0.3.0",
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "scikit-image>=0.21",
+  "h5py>=3.9",
+  "tifffile>=2023.7.10",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+registration = [
+  "SimpleITK>=2.3",
+  "matplotlib>=3.7",
+]
+transport = [
+  "openimpala>=4.6.0,<6.0.0",
+]
+# Note: structural_mechanics_solver (sms) is currently a private BASE-Laboratory repository;
+# install from a local or authenticated checkout (`pip install -e ../structural_mechanics_solver`)
+# until sms is published publicly.
+notebooks = [
+  "matplotlib>=3.7",
+  "jupyter>=1.0",
+]
+dev = [
+  "pytest>=7.4",
+  "SimpleITK>=2.3",
+  "matplotlib>=3.7",
+  "openimpala>=4.6.0,<6.0.0",
+]
+
+[project.scripts]
+mmbench = "multimodal_benchmark.cli:main"
+mmbench-evaluate = "multimodal_benchmark.cli:main_evaluate"
+mmbench-audit = "multimodal_benchmark.cli:main_audit"
+mmbench-splits = "multimodal_benchmark.cli:main_splits"
+
+[tool.setuptools.package-dir]
+"" = "."
+"multimodal_benchmark" = "src/multimodal_benchmark"
+
+[tool.setuptools.packages.find]
+where = ["src", "."]
+include = ["multimodal_benchmark*", "registration*", "preprocessing*", "tasks*", "splits*", "baselines*", "release_packaging*"]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "src"]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.basecoat.layers]
+layer = 4
+banned_imports = []

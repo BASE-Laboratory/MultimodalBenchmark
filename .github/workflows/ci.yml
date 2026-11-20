@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    name: Pytest (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install MultimodalBenchmark (with basecoat v0.3, SimpleITK, and OpenImpala)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Check Layer 4 architectural import boundaries
+        run: python -m basecoat.layers
+
+      - name: Run unit & integration test suite
+        env:
+          OPENIMPALA_BACKEND: pure
+        run: pytest -v
+
+  zenodo-lightweight-gate:
+    name: Lightweight Zenodo Fixture & Golden Thread Audit (ubuntu-latest, py3.11)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install MultimodalBenchmark
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Check Layer 4 architectural import boundaries
+        run: python -m basecoat.layers
+
+      - name: Fetch & MD5-verify lightweight (< 2 MB) Zenodo fixtures
+        run: |
+          mmbench verify-manifest --manifest configs/manifest.yaml --cache-dir data/cache/zenodo --download-lightweight
+          python -c "
+          import json, urllib.request
+          from pathlib import Path
+          cdir = Path('data/cache/zenodo')
+          with urllib.request.urlopen('https://zenodo.org/api/records/13329639', timeout=30) as r:
+              rec = json.loads(r.read().decode())
+          for f in rec.get('files', []):
+              k = f['key']
+              if k.startswith('output_') and k.endswith('.nxs') and not (cdir / k).exists():
+                  urllib.request.urlretrieve(f['links']['self'], cdir / k)
+          "
+
+      - name: Run full zero-skip pytest suite (Zenodo XRD-CT + joint transport/mechanics Golden Thread)
+        env:
+          OPENIMPALA_BACKEND: pure
+        run: pytest -v -rs
