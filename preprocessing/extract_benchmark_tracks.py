@@ -20,6 +20,7 @@ from typing import Any, Dict, Optional, Sequence, Tuple
 
 import h5py
 import numpy as np
+from basecoat import AxisSpec, coarsen_axes
 from skimage.transform import downscale_local_mean
 
 from baselines.integrations.openlsrx_adapter import resample_with_benchmark_transform
@@ -32,26 +33,31 @@ def build_ome_ngff_multiscales_attrs(
     voxel_size_um: float,
     track_version: str = "raw_float32",
 ) -> Dict[str, Any]:
-    """Build OME-NGFF v0.4 `.zattrs` coordinate transformation metadata in physical micrometers."""
+    """Build OME-NGFF v0.4 `.zattrs` coordinate transformation metadata using basecoat's cell-centre geometry."""
     v = float(voxel_size_um)
+    axes_lvl0 = tuple(AxisSpec(name=ax, kind="space", unit="um", scale=v, offset=0.0) for ax in ("z", "y", "x"))
+    axes_lite4x = coarsen_axes(axes_lvl0, 4)
     return {
         "multiscales": [
             {
                 "version": "0.4",
                 "name": name,
                 "axes": [
-                    {"name": "z", "type": "space", "unit": "micrometer"},
-                    {"name": "y", "type": "space", "unit": "micrometer"},
-                    {"name": "x", "type": "space", "unit": "micrometer"},
+                    {"name": ax.name, "type": "space", "unit": "micrometer"} for ax in axes_lvl0
                 ],
                 "datasets": [
                     {
                         "path": "0",
-                        "coordinateTransformations": [{"type": "scale", "scale": [v, v, v]}],
+                        "coordinateTransformations": [
+                            {"type": "scale", "scale": [float(ax.scale) for ax in axes_lvl0]}
+                        ],
                     },
                     {
                         "path": "lite_4x",
-                        "coordinateTransformations": [{"type": "scale", "scale": [4.0 * v, 4.0 * v, 4.0 * v]}],
+                        "coordinateTransformations": [
+                            {"type": "scale", "scale": [float(ax.scale) for ax in axes_lite4x]},
+                            {"type": "translation", "translation": [float(ax.offset) for ax in axes_lite4x]},
+                        ],
                     },
                 ],
                 "metadata": {

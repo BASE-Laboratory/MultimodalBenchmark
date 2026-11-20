@@ -31,13 +31,14 @@ keywords = [
   "openimpala",
 ]
 dependencies = [
-  "numpy>=1.24",
-  "scipy>=1.10",
+  # Swap to "basecoat>=0.1.0,<0.2.0" once PyPI Trusted Publisher is enabled on BASE-Laboratory/basecoat
+  "basecoat @ git+https://github.com/BASE-Laboratory/basecoat.git@v0.1.0",
+  "numpy>=1.26",
+  "scipy>=1.11",
   "scikit-image>=0.21",
-  "h5py>=3.8",
+  "h5py>=3.9",
   "tifffile>=2023.7.10",
   "pyyaml>=6.0",
-  "zarr>=2.16,<3",
 ]
 
 [project.optional-dependencies]
@@ -77,3 +78,7 @@ include = ["multimodal_benchmark*", "registration*", "preprocessing*", "tasks*",
 pythonpath = [".", "src"]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.basecoat.layers]
+layer = 4
+banned_imports = []

@@ -3,22 +3,72 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import h5py
 import numpy as np
-import SimpleITK as sitk
+from basecoat import (
+    AxisSpec,
+    SimilarityTransform3D as BasecoatSimilarityTransform3D,
+    Volume,
+    resample_volume,
+)
 from scipy.ndimage import center_of_mass, gaussian_filter, label as nd_label, map_coordinates, sobel
 from scipy.optimize import least_squares
 from scipy.spatial import cKDTree
 from skimage.filters import threshold_otsu
 
 
+def _require_sitk() -> Any:
+    try:
+        import SimpleITK as sitk
+    except ImportError as exc:
+        raise ImportError(
+            "SimpleITK is required for multi-resolution NMI/MSE registration fitting; "
+            "install via `pip install multimodal-benchmark[registration]`."
+        ) from exc
+    return sitk
+
+
+def _rotmat_xyz_to_versor_xyzw(r_xyz: np.ndarray) -> Tuple[float, float, float, float]:
+    """Convert an orthonormal right-handed 3x3 XYZ rotation matrix to an ITK unit versor (qx, qy, qz, qw)."""
+    tr = float(r_xyz[0, 0] + r_xyz[1, 1] + r_xyz[2, 2])
+    if tr > 0.0:
+        s = math.sqrt(tr + 1.0) * 2.0
+        qw = 0.25 * s
+        qx = (r_xyz[2, 1] - r_xyz[1, 2]) / s
+        qy = (r_xyz[0, 2] - r_xyz[2, 0]) / s
+        qz = (r_xyz[1, 0] - r_xyz[0, 1]) / s
+    elif r_xyz[0, 0] > r_xyz[1, 1] and r_xyz[0, 0] > r_xyz[2, 2]:
+        s = math.sqrt(1.0 + r_xyz[0, 0] - r_xyz[1, 1] - r_xyz[2, 2]) * 2.0
+        qw = (r_xyz[2, 1] - r_xyz[1, 2]) / s
+        qx = 0.25 * s
+        qy = (r_xyz[0, 1] + r_xyz[1, 0]) / s
+        qz = (r_xyz[0, 2] + r_xyz[2, 0]) / s
+    elif r_xyz[1, 1] > r_xyz[2, 2]:
+        s = math.sqrt(1.0 + r_xyz[1, 1] - r_xyz[0, 0] - r_xyz[2, 2]) * 2.0
+        qw = (r_xyz[0, 2] - r_xyz[2, 0]) / s
+        qx = (r_xyz[0, 1] + r_xyz[1, 0]) / s
+        qy = 0.25 * s
+        qz = (r_xyz[1, 2] + r_xyz[2, 1]) / s
+    else:
+        s = math.sqrt(1.0 + r_xyz[2, 2] - r_xyz[0, 0] - r_xyz[1, 1]) * 2.0
+        qw = (r_xyz[1, 0] - r_xyz[0, 1]) / s
+        qx = (r_xyz[0, 2] + r_xyz[2, 0]) / s
+        qy = (r_xyz[1, 2] + r_xyz[2, 1]) / s
+        qz = 0.25 * s
+    if qw < 0.0:
+        qx, qy, qz, qw = -qx, -qy, -qz, -qw
+    nrm = math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw)
+    return (float(qx / nrm), float(qy / nrm), float(qz / nrm), float(qw / nrm))
+
+
 @dataclass(frozen=True)
 class SimilarityTransform3D:
-    """3D 7-DOF similarity transform in physical micron coordinates (SimpleITK XYZ convention)."""
+    """3D 7-DOF similarity transform DTO in physical micron coordinates (SimpleITK XYZ schema, backed by basecoat)."""
 
     matrix_3x3: Tuple[Tuple[float, float, float], Tuple[float, float, float], Tuple[float, float, float]]
     translation_xyz_um: Tuple[float, float, float]
@@ -26,35 +76,55 @@ class SimilarityTransform3D:
     scale: float
     versor_xyzw: Tuple[float, float, float, float]
 
-    def transform_points_xyz_um(self, pts_xyz_um: np.ndarray) -> np.ndarray:
-        """Map fixed physical points (N, 3) in (x, y, z) um to moving physical points."""
-        pts = np.asarray(pts_xyz_um, dtype=np.float64)
-        mat = np.asarray(self.matrix_3x3, dtype=np.float64)
-        cen = np.asarray(self.center_xyz_um, dtype=np.float64)
-        trn = np.asarray(self.translation_xyz_um, dtype=np.float64)
-        return (pts - cen) @ mat.T + cen + trn
-
-    def to_sitk(self) -> sitk.Similarity3DTransform:
-        tx = sitk.Similarity3DTransform()
-        tx.SetCenter(self.center_xyz_um)
-        tx.SetRotation(self.versor_xyzw)
-        tx.SetTranslation(self.translation_xyz_um)
-        tx.SetScale(self.scale)
-        return tx
+    def to_basecoat(
+        self,
+        from_space: str = "fixed",
+        to_space: str = "moving",
+    ) -> BasecoatSimilarityTransform3D:
+        """Convert to a `basecoat.SimilarityTransform3D` in canonical `('z', 'y', 'x')` order."""
+        scaled_xyz = np.asarray(self.matrix_3x3, dtype=np.float64)
+        r_xyz = scaled_xyz / float(self.scale)
+        r_zyx = r_xyz[::-1, ::-1]
+        cx, cy, cz = self.center_xyz_um
+        tx, ty, tz = self.translation_xyz_um
+        return BasecoatSimilarityTransform3D(
+            rotation_zyx=r_zyx,
+            scale=float(self.scale),
+            center_zyx=(float(cz), float(cy), float(cx)),
+            translation_zyx=(float(tz), float(ty), float(tx)),
+            from_space=from_space,
+            to_space=to_space,
+            unit="um",
+        )
 
     @classmethod
-    def from_sitk(cls, tx: sitk.Transform) -> "SimilarityTransform3D":
-        if isinstance(tx, sitk.CompositeTransform):
-            tx = tx.GetNthTransform(tx.GetNumberOfTransforms() - 1)
-        sim = sitk.Similarity3DTransform(tx)
-        mat = np.asarray(sim.GetMatrix(), dtype=np.float64).reshape(3, 3)
+    def from_basecoat(cls, tx: BasecoatSimilarityTransform3D) -> "SimilarityTransform3D":
+        """Construct from a `basecoat.SimilarityTransform3D` without requiring SimpleITK."""
+        r_xyz = np.asarray(tx.rotation_zyx, dtype=np.float64)[::-1, ::-1]
+        scaled_xyz = float(tx.scale) * r_xyz
+        cz, cy, cx = tx.center_zyx
+        tz, ty, tx_um = tx.translation_zyx
         return cls(
-            matrix_3x3=tuple(tuple(float(v) for v in row) for row in mat),
-            translation_xyz_um=tuple(float(v) for v in sim.GetTranslation()),
-            center_xyz_um=tuple(float(v) for v in sim.GetCenter()),
-            scale=float(sim.GetScale()),
-            versor_xyzw=tuple(float(v) for v in sim.GetVersor()),
+            matrix_3x3=tuple(tuple(float(v) for v in row) for row in scaled_xyz),  # type: ignore[arg-type]
+            translation_xyz_um=(float(tx_um), float(ty), float(tz)),
+            center_xyz_um=(float(cx), float(cy), float(cz)),
+            scale=float(tx.scale),
+            versor_xyzw=_rotmat_xyz_to_versor_xyzw(r_xyz),
         )
+
+    def transform_points_xyz_um(self, pts_xyz_um: np.ndarray) -> np.ndarray:
+        """Map fixed physical points (N, 3) in (x, y, z) um to moving physical points via basecoat."""
+        pts_xyz = np.asarray(pts_xyz_um, dtype=np.float64)
+        mapped_zyx = self.to_basecoat().transform_points(pts_xyz[..., ::-1])
+        return mapped_zyx[..., ::-1]
+
+    def to_sitk(self) -> Any:
+        return self.to_basecoat().to_sitk()
+
+    @classmethod
+    def from_sitk(cls, tx: Any) -> "SimilarityTransform3D":
+        bc = BasecoatSimilarityTransform3D.from_sitk(tx, from_space="fixed", to_space="moving", unit="um")
+        return cls.from_basecoat(bc)
 
     def save_json(self, path: Path | str) -> None:
         with open(path, "w", encoding="utf-8") as fh:
@@ -91,8 +161,9 @@ def numpy_zyx_to_sitk(
     vol_zyx: np.ndarray,
     spacing_zyx_um: Tuple[float, float, float],
     origin_zyx_um: Tuple[float, float, float] = (0.0, 0.0, 0.0),
-) -> sitk.Image:
+) -> Any:
     """Convert a (Z, Y, X) NumPy volume to a SimpleITK Image with physical (X, Y, Z) spacing in um."""
+    sitk = _require_sitk()
     img = sitk.GetImageFromArray(np.asarray(vol_zyx, dtype=np.float32))
     sz, sy, sx = spacing_zyx_um
     oz, oy, ox = origin_zyx_um
@@ -106,26 +177,46 @@ def resample_moving_to_fixed_zyx(
     moving_spacing_zyx_um: Tuple[float, float, float],
     fixed_shape_zyx: Tuple[int, int, int],
     fixed_spacing_zyx_um: Tuple[float, float, float],
-    transform: SimilarityTransform3D,
+    transform: SimilarityTransform3D | BasecoatSimilarityTransform3D,
     moving_origin_zyx_um: Tuple[float, float, float] = (0.0, 0.0, 0.0),
     fixed_origin_zyx_um: Tuple[float, float, float] = (0.0, 0.0, 0.0),
-    interpolator: int = sitk.sitkLinear,
+    interpolator: Optional[int | str] = None,
 ) -> np.ndarray:
-    """Resample moving 3D volume onto fixed physical grid using a 7-DOF SimilarityTransform3D."""
-    mov_img = numpy_zyx_to_sitk(moving_zyx, moving_spacing_zyx_um, moving_origin_zyx_um)
-    fz, fy, fx = fixed_shape_zyx
-    sz, sy, sx = fixed_spacing_zyx_um
-    oz, oy, ox = fixed_origin_zyx_um
+    """Resample moving 3D volume onto fixed physical grid using `basecoat.resample_volume`."""
+    bc_tx = (
+        transform
+        if isinstance(transform, BasecoatSimilarityTransform3D)
+        else transform.to_basecoat(from_space="fixed", to_space="moving")
+    )
+    moving_axes = tuple(
+        AxisSpec(name=ax, kind="space", unit="um", scale=float(sp), offset=float(orig))
+        for ax, sp, orig in zip(("z", "y", "x"), moving_spacing_zyx_um, moving_origin_zyx_um, strict=True)
+    )
+    fixed_axes = tuple(
+        AxisSpec(name=ax, kind="space", unit="um", scale=float(sp), offset=float(orig))
+        for ax, sp, orig in zip(("z", "y", "x"), fixed_spacing_zyx_um, fixed_origin_zyx_um, strict=True)
+    )
+    # Map SimpleITK interpolator enum constants (sitkNearestNeighbor == 1, sitkLinear == 2, sitkBSpline == 23)
+    if interpolator is None or interpolator in (2, "linear"):
+        spline_order = 1
+    elif interpolator in (1, "nearest"):
+        spline_order = 0
+    elif interpolator in (23, "cubic", "bspline"):
+        spline_order = 3
+    else:
+        raise ValueError(
+            f"Unsupported interpolator={interpolator!r}; pass None/'linear' (2), 'nearest' (1), or 'bspline' (23)."
+        )
 
-    resampler = sitk.ResampleImageFilter()
-    resampler.SetSize((int(fx), int(fy), int(fz)))
-    resampler.SetOutputSpacing((float(sx), float(sy), float(sz)))
-    resampler.SetOutputOrigin((float(ox), float(oy), float(oz)))
-    resampler.SetTransform(transform.to_sitk())
-    resampler.SetInterpolator(interpolator)
-    resampler.SetDefaultPixelValue(float(np.percentile(moving_zyx, 5.0)))
-    out_img = resampler.Execute(mov_img)
-    return sitk.GetArrayFromImage(out_img).astype(np.float32)
+    mov_vol = Volume(np.asarray(moving_zyx, dtype=np.float32), axes=moving_axes, space=bc_tx.to_space)
+    out_vol = resample_volume(
+        mov_vol,
+        fixed_axes,
+        target_shape=(int(fixed_shape_zyx[0]), int(fixed_shape_zyx[1]), int(fixed_shape_zyx[2])),
+        transform=bc_tx,
+        order=spline_order,
+    )
+    return np.asarray(out_vol.data, dtype=np.float32)
 
 
 def extract_feature_centroids_xyz_um(
@@ -209,6 +300,7 @@ def register_3d_similarity(
     allow_scale: bool = True,
 ) -> LadderRegistrationResult:
     """Fit a 3D 7-DOF similarity (or 6-DOF rigid) transform using multi-resolution SimpleITK pyramid."""
+    sitk = _require_sitk()
     fix_img = numpy_zyx_to_sitk(fixed_zyx, fixed_spacing_zyx_um, fixed_origin_zyx_um)
     mov_img = numpy_zyx_to_sitk(moving_zyx, moving_spacing_zyx_um, moving_origin_zyx_um)
 

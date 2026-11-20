@@ -18,9 +18,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
-import zarr
-from numcodecs import Blosc
-from skimage.transform import downscale_local_mean
+from basecoat import AxisSpec, Volume, write_ome_zarr
 
 UPSTREAM_ZENODO_DOIS: Tuple[Tuple[str, str], ...] = (
     ("10.1038/s41597-025-04605-9", "isSupplementTo"),
@@ -43,11 +41,9 @@ def write_ome_zarr_v04(
     multiscale_levels: int = 2,
     extra_attrs: Optional[Mapping[str, Any]] = None,
 ) -> Path:
-    """Write a 2D `(y, x)`, 3D `(z, y, x)` or `(c, y, x)`, or 4D `(c, z, y, x)` array as OME-Zarr v0.4."""
+    """Write a 2D `(y, x)`, 3D `(z, y, x)` or `(c, y, x)`, or 4D `(c, z, y, x)` array as OME-Zarr v0.4 via basecoat."""
     arr = np.asarray(array)
     out = Path(store_path)
-    if out.exists():
-        shutil.rmtree(out)
 
     ndim = arr.ndim
     if axes_names is None:
@@ -63,60 +59,30 @@ def write_ome_zarr_v04(
     if len(voxel_size_um) != ndim:
         raise ValueError(f"voxel_size_um length {len(voxel_size_um)} must match array ndim {ndim}")
 
-    axes_meta = []
-    for ax in axes_names:
-        if ax == "c":
-            axes_meta.append({"name": "c", "type": "channel"})
-        else:
-            axes_meta.append({"name": ax, "type": "space", "unit": "micrometer"})
+    axes = tuple(
+        AxisSpec(name="c", kind="channel", unit="none", scale=1.0)
+        if ax == "c"
+        else AxisSpec(name=str(ax), kind="space", unit="um", scale=float(sc))
+        for ax, sc in zip(axes_names, voxel_size_um, strict=True)
+    )
 
-    compressor = Blosc(cname="zstd", clevel=5, shuffle=Blosc.BITSHUFFLE)
-    root = zarr.open_group(str(out), mode="w", zarr_version=2)
+    spatial_dims = [s for s, ax in zip(arr.shape, axes_names, strict=True) if ax != "c"]
+    eff_levels = 1 if (spatial_dims and min(spatial_dims) < 32) else max(1, int(multiscale_levels))
 
-    datasets_meta: List[Dict[str, Any]] = []
-    cur = arr
-    cur_scale = [float(s) for s in voxel_size_um]
-
-    for lvl in range(max(1, int(multiscale_levels))):
-        chunks = tuple(min(s, 1 if ax == "c" else 128) for s, ax in zip(cur.shape, axes_names))
-        root.create_dataset(
-            str(lvl),
-            data=cur,
-            chunks=chunks,
-            compressor=compressor,
-            overwrite=True,
-        )
-        datasets_meta.append(
-            {
-                "path": str(lvl),
-                "coordinateTransformations": [{"type": "scale", "scale": list(cur_scale)}],
-            }
-        )
-        # Stop pyramid if spatial dimensions are already compact (< 32 px)
-        spatial_dims = [s for s, ax in zip(cur.shape, axes_names) if ax != "c"]
-        if min(spatial_dims) < 32 or lvl + 1 >= multiscale_levels:
-            break
-        factors = tuple(1 if ax == "c" else 2 for ax in axes_names)
-        cur = downscale_local_mean(cur, factors).astype(arr.dtype)
-        cur_scale = [s * f for s, f in zip(cur_scale, factors)]
-
-    multiscales_entry: Dict[str, Any] = {
-        "version": "0.4",
-        "name": out.stem,
-        "axes": axes_meta,
-        "datasets": datasets_meta,
-        "type": "local_mean_downscale",
-    }
-    root.attrs["multiscales"] = [multiscales_entry]
-    if channel_names is not None:
-        root.attrs["omero"] = {
-            "name": out.stem,
-            "version": "0.4",
-            "channels": [{"label": str(lbl), "active": True} for lbl in channel_names],
-        }
+    prov: Dict[str, Any] = {}
     if extra_attrs:
-        root.attrs["zn13x_bench"] = dict(extra_attrs)
-    return out
+        prov["zn13x_bench"] = dict(extra_attrs)
+    if channel_names is not None:
+        prov["channel_names"] = [str(lbl) for lbl in channel_names]
+
+    vol = Volume(arr, axes=axes, provenance=prov)
+    return write_ome_zarr(
+        vol,
+        out,
+        name=out.stem.removesuffix(".ome"),
+        multiscale_levels=eff_levels,
+        overwrite=True,
+    )
 
 
 def validate_croissant_jsonld(croissant_path: Path | str) -> Dict[str, Any]:
