@@ -1,31 +1,55 @@
-# Zn-13X-Bench Task T1 Headline Experiment Configuration:
-# Synthetic-Trained vs. Real-Trained 3D XCT Super-Resolution Scored by Physics (OpenImpala)
-task: "t1"
-tracks:
-  - "2p026x"   # 169067 (1.6212 um) -> 169066 (0.8006 um)
-  - "8p101x"   # 169068 (2.5945 um) -> 169065 (0.3211 um, chained 7-DOF)
-reference_track: "raw_float32"
-secondary_reference_track: "cleaned_dering_v1"
-benchmark_transforms_file: "configs/i13_benchmark_transforms.json"
-splits_file: "splits/benchmark_splits_v1.json"
+# Task T1 Learned Baseline Matrix for BASE-Laboratory/OpenLSR-X v0.2.1
+# Includes the `synthetic_jittered` registration-jitter control (~2.5 HR voxels = ~2.0 um on 2.026x)
+# to isolate misregistration-induced L1 smoothing from physical scintillator/phase-contrast domain shift.
+# Track 8.101x is marked `exploratory: true` (excluded by default unless `--include-exploratory-8x` is passed).
+
+suite: openlsrx
+prepared_tiffs_dir: "data/benchmarks/zn13x_float32"
 seeds: [42, 137, 2026]
+
+tracks:
+  - name: "2p026x"
+    exploratory: false
+    lr_scan: "169067"
+    hr_scan: "169066"
+    ruby_calibrated_hr_voxel_um: 0.8006
+    openlsrx_base_config: "configs/i13-xct/zn13x_2x_swinir_25d_physics.yaml"
+  - name: "8p101x"
+    exploratory: true
+    lr_scan: "169068"
+    hr_scan: "169065"
+    ruby_calibrated_hr_voxel_um: 0.3211
+    openlsrx_base_config: "configs/i13-xct/zn13x_8x_2600_to_0325.yaml"
+
 training_regimes:
-  - "synthetic_clean"
-  - "synthetic_noisy"
-  - "real_paired"
-backbones:
-  - "unet3d"
-  - "swinir3d"
-  - "openlsrx"
-training:
-  patch_size_lr_2p026x: [32, 64, 64]
-  patch_size_lr_8p101x: [24, 48, 48]
-  batch_size: 4
-  epochs: 100
-  loss: "l1"
-  optimizer: "adamw"
-  learning_rate: 1.0e-4
-evaluation:
-  test_on: "real_paired_only"
-  fixed_threshold_transport: true
-  report_threshold_sensitivity: true
+  - name: "synthetic_clean"
+    description: "HR blurred + downsampled at exact non-integer magnification ratio (0 registration jitter)"
+  - name: "synthetic_noisy"
+    description: "HR blurred + downsampled + calibrated sCMOS noise (0 registration jitter)"
+  - name: "synthetic_jittered"
+    description: "Control: HR blurred + downsampled + sCMOS noise + matched 2.5 HR-voxel (~2.0 um) 3D registration jitter"
+  - name: "real_paired"
+    description: "Measured lower-resolution scan aligned via 7-DOF transform (refitted on 32-bit float)"
+
+models:
+  - name: "srresnet_25d"
+    backbone: "srgan"
+    context_slices: 3
+    use_adversarial_loss: false
+    conservation_loss_weight: 0.0
+    topology_loss_weight: 0.0
+    ffl_loss_weight: 0.0
+  - name: "swinir_25d_l1"
+    backbone: "swinir"
+    context_slices: 3
+    use_adversarial_loss: false
+    conservation_loss_weight: 0.0
+    topology_loss_weight: 0.0
+    ffl_loss_weight: 0.0
+  - name: "openlsrx_swinir_physics"
+    backbone: "swinir"
+    context_slices: 3
+    use_adversarial_loss: false
+    conservation_loss_weight: 0.25
+    topology_loss_weight: 0.05
+    ffl_loss_weight: 0.05

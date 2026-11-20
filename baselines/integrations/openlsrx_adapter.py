@@ -116,21 +116,36 @@ def synthesize_degraded_lr_from_hr(
     with_noise: bool = False,
     noise_sigma_rel: float = 0.035,
     psf_sigma_factor: float = 0.45,
+    registration_jitter_hr_vox: float = 0.0,
     seed: int = 42,
     return_on_hr_grid: bool = False,
 ) -> np.ndarray:
-    """Synthesize degraded LR input from HR reference at `true_scale_ratio` for the Synthetic-vs-Real experiment."""
+    """Synthesize degraded LR input from HR reference at `true_scale_ratio` for the Synthetic-vs-Real experiment.
+
+    When `registration_jitter_hr_vox > 0` (`synthetic_jittered` control regime), applies a deterministic-seed 3D
+    translation perturbation (matching the ~2-3 um / ~2.5-3.5 HR-voxel residual drift measured on Rungs 1-2)
+    before blurring and downsampling, isolating misregistration-induced L1 smoothing from physical domain shift.
+    """
+    from scipy.ndimage import shift as nd_shift
+
+    rng = np.random.default_rng(seed)
     hr = np.asarray(hr_zyx, dtype=np.float32)
+    if registration_jitter_hr_vox > 0.0:
+        jit = np.clip(
+            rng.normal(0.0, float(registration_jitter_hr_vox), size=3),
+            -2.0 * float(registration_jitter_hr_vox),
+            2.0 * float(registration_jitter_hr_vox),
+        )
+        hr = nd_shift(hr, shift=tuple(float(v) for v in jit), order=1, mode="nearest").astype(np.float32)
+
     sigma_hr = float(psf_sigma_factor) * float(true_scale_ratio)
     blurred = gaussian_filter(hr, sigma=sigma_hr, mode="nearest")
     inv_s = 1.0 / float(true_scale_ratio)
     lr_syn = zoom(blurred, zoom=(inv_s, inv_s, inv_s), order=1, mode="nearest", grid_mode=True).astype(np.float32)
 
     if with_noise:
-        rng = np.random.default_rng(seed)
         p5, p95 = [float(v) for v in np.percentile(lr_syn, [5.0, 95.0])]
         dyn = max(p95 - p5, float(np.std(lr_syn)) * 2.0, 1e-6)
-        # Mixed Poisson-like signal-dependent + Gaussian readout noise matching synchrotron sCMOS statistics
         rel_intensity = np.clip((lr_syn - p5) / dyn, 0.05, 2.0)
         sig_map = float(noise_sigma_rel) * dyn * np.sqrt(0.4 + 0.6 * rel_intensity)
         lr_syn = (lr_syn + rng.normal(0.0, 1.0, size=lr_syn.shape).astype(np.float32) * sig_map).astype(np.float32)

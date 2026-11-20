@@ -1,6 +1,8 @@
 {
-  "schema_version": "2.0.0",
-  "description": "Frozen 7-DOF similarity transforms for the DLS I13-2 multi-magnification XCT ladder (Zn-13X-Bench Task T1). OpenLSR-X and all T1 baselines MUST resample via these benchmark transforms rather than nominal ratios or per-model registration.",
+  "schema_version": "2.1.0",
+  "status": "provisional_8bit_preview_refit_required_on_float32",
+  "description": "7-DOF similarity transforms for the DLS I13-2 multi-magnification XCT ladder (Zn-13X-Bench Task T1). Current parameters were fitted on the Zenodo 14245751 8-bit preview sub-volumes (with 82% non-cupping radial mask) and MUST be refitted on the full 32-bit float Savu reconstructions (Zenodo 12206815, 13327651, 13327682, 13327692) before final leaderboard freeze.",
+  "cross_repo_reconciliation_note": "OpenLSR-X v0.2.1 (`src/openlsrx/data/zn13x_certified_regions.yaml`) records an earlier unmasked 8-bit preview fit giving Rung 1 = 1.6023x (scale 0.99855) and Rung 2 = 2.0276x (scale 0.98640), differing by 0.09-0.10% from the 82%-radial-masked fit below (1.6039x, 2.0258x). Both repos should point `--certified-regions` at `configs/i13_certified_regions.yaml` once refitted on full 32-bit float volumes.",
   "ruby_sphere_calibration_note": "3D Cauchy metrology on the nominal 500 um ruby sphere agrees with 7-DOF pellet scale ratios to 0.04% (R_66/R_67 = 2.0251 vs 2.0258). Ball manufacturing tolerance (+/-dD/500 um) cancels identically in magnification ratios while propagating to absolute voxel sizes.",
   "calibrated_voxel_sizes_um": {
     "169068_1p25x": {
@@ -26,61 +28,66 @@
   },
   "tracks": {
     "1p604x": {
+      "role": "core",
       "lr_scan": "169068",
       "hr_scan": "169067",
       "nominal_ratio": 1.6,
       "true_magnification_ratio": 1.6039,
+      "openlsrx_v021_unmasked_preview_ratio": 1.6023,
       "fitted_scale_factor_lr_over_hr_nom": 0.99757,
       "euler_xyz_rad": [-0.00046, 0.00009, 0.00063],
       "fine_translation_xyz_um": [-0.97, -0.355, -1.926],
-      "zenodo_8bit_crop_offset_zyx_um": [-223.6, 5.2, 5.2],
-      "fullstack_alignment_ref_slice_z": {"169068": 509, "169067": 804}
+      "zenodo_8bit_crop_offset_zyx_um": [-403.0, 487.5, 487.5],
+      "residual_fiducial_vs_pellet_slip_um": 3.0
     },
     "2p026x": {
+      "role": "core_headline",
       "lr_scan": "169067",
       "hr_scan": "169066",
       "nominal_ratio": 2.0,
       "true_magnification_ratio": 2.0258,
+      "openlsrx_v021_unmasked_preview_ratio": 2.0276,
       "fitted_scale_factor_lr_over_hr_nom": 0.98727,
-      "euler_xyz_rad": [-0.00088, -0.0010, -0.00064],
-      "fine_translation_xyz_um": [0.837, 0.013, 1.859],
-      "zenodo_8bit_crop_offset_zyx_um": [-139.75, -35.75, 42.25],
-      "fullstack_alignment_ref_slice_z": {"169067": 804, "169066": 894}
+      "euler_xyz_rad": [-0.00112, -0.00095, -0.00063],
+      "fine_translation_xyz_um": [-5.284, -1.498, 2.345],
+      "zenodo_8bit_crop_offset_zyx_um": [-203.125, 377.0, 448.5],
+      "residual_fiducial_vs_pellet_slip_um": 1.9
     },
     "2p493x": {
+      "role": "core",
       "lr_scan": "169066",
       "hr_scan": "169065",
       "nominal_ratio": 2.5,
       "true_magnification_ratio": 2.4934,
+      "openlsrx_v021_unmasked_preview_ratio": 2.4924,
       "fitted_scale_factor_lr_over_hr_nom": 1.00265,
-      "euler_xyz_rad": [0.00005, -0.00005, -0.00021],
-      "fine_translation_xyz_um": [0.841, 0.48, -0.176],
-      "zenodo_8bit_crop_offset_zyx_um": [-121.88, -39.0, 204.75],
-      "fullstack_alignment_ref_slice_z": {"169066": 894, "169065": 934}
+      "euler_xyz_rad": [0.00008, -0.00024, -0.00057],
+      "fine_translation_xyz_um": [0.512, -0.618, 0.088],
+      "zenodo_8bit_crop_offset_zyx_um": [-121.875, 204.75, 448.5]
     },
     "5p051x": {
+      "role": "core",
       "lr_scan": "169067",
       "hr_scan": "169065",
       "nominal_ratio": 5.0,
       "true_magnification_ratio": 5.0511,
-      "composition": ["2p026x", "2p493x"],
       "fitted_scale_factor_lr_over_hr_nom": 0.98989,
-      "euler_xyz_rad": [-0.00083, -0.00105, -0.00085],
-      "fine_translation_xyz_um": [1.678, 0.493, 1.683],
-      "zenodo_8bit_crop_offset_zyx_um": [-261.63, -74.75, 247.0],
-      "fullstack_alignment_ref_slice_z": {"169067": 804, "169065": 934}
+      "euler_xyz_rad": [-0.00104, -0.00119, -0.0012],
+      "fine_translation_xyz_um": [-4.772, -2.116, 2.433],
+      "zenodo_8bit_crop_offset_zyx_um": [-325.0, 581.75, 897.0]
     },
     "8p101x": {
+      "role": "exploratory",
+      "exploratory_warning": "Direct 8x overlap spans only ~30x80x80 coarse voxels with direct Pearson r = 0.07 and a 2.4% scale discrepancy between direct and chained fits; demoted to exploratory.",
       "lr_scan": "169068",
       "hr_scan": "169065",
       "nominal_ratio": 8.0,
       "true_magnification_ratio": 8.1014,
-      "composition": ["1p604x", "2p026x", "2p493x"],
-      "fitted_scale_factor_lr_over_hr_nom": 0.98748,
-      "euler_xyz_rad": [-0.00129, -0.00096, -0.00022],
-      "fine_translation_xyz_um": [0.708, 0.138, -0.243],
-      "zenodo_8bit_crop_offset_zyx_um": [-485.23, -69.55, 252.2],
-      "fullstack_alignment_ref_slice_z": {"169068": 509, "169065": 934}
+      "fitted_scale_factor_lr_over_hr_nom": 0.98749,
+      "euler_xyz_rad": [-0.0015, -0.0011, -0.00057],
+      "fine_translation_xyz_um": [-5.742, -2.471, 0.507],
+      "zenodo_8bit_crop_offset_zyx_um": [-728.0, 1069.25, 1384.5],
+      "composition_rule": "chained_adjacent_only_direct_fit_forbidden"
     }
   }
 }

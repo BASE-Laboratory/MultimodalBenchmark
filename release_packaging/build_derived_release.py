@@ -175,12 +175,18 @@ def build_zenodo_derived_metadata(version: str = "2.0.0") -> Dict[str, Any]:
         "version": version,
         "license": "cc-by-4.0",
         "creators": [
-            {"name": "Le Houx, James", "affiliation": "BASE Laboratory"},
-            {"name": "Green, Calum", "affiliation": "Diamond Light Source / University College London"},
+            {"name": "Le Houx, James", "affiliation": "University of Greenwich; The Faraday Institution"},
+            {"name": "Green, Calum", "affiliation": "Imperial College London (work conducted)"},
+            {"name": "Ahmed, Sharif", "affiliation": "Diamond Light Source"},
+            {"name": "Marathe, Shashidhara", "affiliation": "Diamond Light Source"},
+            {"name": "Perera, Liam", "affiliation": "Diamond Light Source"},
+            {"name": "Leonardi, Alberto", "affiliation": "Diamond Light Source"},
+            {"name": "Gmyrek, Killian", "affiliation": "Imperial College London"},
+            {"name": "Dini, Daniele", "affiliation": "Imperial College London"},
         ],
         "description": (
             "Derived benchmark release accompanying Zn-13X-Bench, built upon Green et al., Scientific Data 12, 329 "
-            "(2025). Provides frozen 7-DOF similarity transforms at ruby-calibrated magnification ratios, two-track "
+            "(2025). Provides 32-bit-refitted 7-DOF similarity transforms at ruby-calibrated magnification ratios, two-track "
             "32-bit float sub-volumes (raw_float32 primary and cleaned_dering_v1 secondary with difference maps), "
             "continuum-subtracted and rotation-aligned 25 um / 50 um DIAD XRD-CT Na/Zn abundance and variance maps, "
             "LR-voxel leakage-free splits, and Croissant 1.0 metadata."

@@ -41,8 +41,14 @@
   "url": "https://github.com/BASE-Laboratory/MultimodalBenchmark",
   "version": "2.0.0",
   "creator": [
-    {"@type": "sc:Person", "name": "James Le Houx", "affiliation": {"@type": "sc:Organization", "name": "BASE Laboratory"}},
-    {"@type": "sc:Person", "name": "Calum Green", "affiliation": {"@type": "sc:Organization", "name": "Diamond Light Source"}}
+    {"@type": "sc:Person", "name": "James Le Houx", "affiliation": {"@type": "sc:Organization", "name": "University of Greenwich & The Faraday Institution"}},
+    {"@type": "sc:Person", "name": "Calum Green", "affiliation": {"@type": "sc:Organization", "name": "Imperial College London (work conducted)"}},
+    {"@type": "sc:Person", "name": "Sharif Ahmed", "affiliation": {"@type": "sc:Organization", "name": "Diamond Light Source"}},
+    {"@type": "sc:Person", "name": "Shashidhara Marathe", "affiliation": {"@type": "sc:Organization", "name": "Diamond Light Source"}},
+    {"@type": "sc:Person", "name": "Liam Perera", "affiliation": {"@type": "sc:Organization", "name": "Diamond Light Source"}},
+    {"@type": "sc:Person", "name": "Alberto Leonardi", "affiliation": {"@type": "sc:Organization", "name": "Diamond Light Source"}},
+    {"@type": "sc:Person", "name": "Killian Gmyrek", "affiliation": {"@type": "sc:Organization", "name": "Imperial College London"}},
+    {"@type": "sc:Person", "name": "Daniele Dini", "affiliation": {"@type": "sc:Organization", "name": "Imperial College London"}}
   ],
   "citation": "Green, C. et al., Three-dimensional, multimodal synchrotron data for machine learning applications, Scientific Data 12, 329 (2025). https://doi.org/10.1038/s41597-025-04605-9",
   "isBasedOn": [

@@ -97,5 +97,51 @@ def test_openlsrx_frozen_benchmark_transforms_and_two_track_extractor(tmp_path: 
 
     croissant = json.loads(Path("configs/croissant.json").read_text(encoding="utf-8"))
     assert croissant["conformsTo"] == "http://mlcommons.org/croissant/1.0"
+    assert len(croissant["creator"]) == 8
     assert len(croissant["recordSet"]) == 4
+
+    # Verify registration-jitter synthetic control (`synthetic_jittered`) perturbs alignment deterministically
+    syn_jit = synthesize_degraded_lr_from_hr(
+        hr, true_scale_ratio=2.0258, with_noise=True, registration_jitter_hr_vox=2.5, seed=7
+    )
+    assert syn_jit.shape == syn_noisy.shape
+    assert float(np.max(np.abs(syn_jit - syn_noisy))) > 0.01
+
+
+def test_learned_cli_commands_match_upstream_openlsrx_and_xfuse_parsers(tmp_path: Path) -> None:
+    """Ensure baselines/learned.py emits ONLY real upstream openlsrx and xfuse CLI subcommands and BibTeX DOIs."""
+    import re
+    import yaml
+    from baselines.learned import build_openlsrx_commands, build_xfuse_commands
+
+    t1_cmds = build_openlsrx_commands("configs/baselines/openlsrx_t1.yaml", tmp_path / "t1")
+    # Default excludes exploratory 8x: 1 track (2p026x) * 4 regimes * 3 models * 3 seeds = 36 runs
+    assert len(t1_cmds) == 36
+    for c in t1_cmds:
+        assert "train_and_predict" not in c
+        assert "openlsrx fit --config" in c
+        assert "openlsrx predict-volume" in c
+        assert any(f"--model.backbone {b}" in c for b in ("srgan", "rrdb", "swinir"))
+
+    t1_cmds_all = build_openlsrx_commands(
+        "configs/baselines/openlsrx_t1.yaml", tmp_path / "t1_all", include_exploratory_8x=True
+    )
+    assert len(t1_cmds_all) == 72
+
+    t2_cmds = build_xfuse_commands("configs/baselines/xfuse_t2.yaml", tmp_path / "t2")
+    assert len(t2_cmds) == 36
+    for c in t2_cmds:
+        assert "fit_correlative" not in c
+        assert ("xfuse fuse " in c) or ("xfuse fuse-3d " in c)
+
+    cert = yaml.safe_load(Path("configs/i13_certified_regions.yaml").read_text(encoding="utf-8"))
+    assert "zenodo_14245751_preview_8bit" in cert
+    assert "169067_from_169066" in cert["zenodo_14245751_preview_8bit"]["adjacent_rungs"]
+
+    bib_text = Path("paper/references.bib").read_text(encoding="utf-8")
+    entries = re.findall(r"@\w+\{([^,]+),", bib_text)
+    dois = re.findall(r"\bdoi\s*=\s*\{([^}]+)\}", bib_text)
+    assert len(entries) == len(dois) >= 18
+    assert "Christensen" not in bib_text
+
 

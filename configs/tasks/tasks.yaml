@@ -21,14 +21,16 @@ reference_tracks:
       checks against 25 um XRD-CT prove they absorb real Zn/Na core-shell and axial chemistry.
 
 headline_experiment:
-  name: "Synthetic-Trained vs. Real-Trained Synchrotron Super-Resolution Scored by Physics"
-  tracks: ["2p026x", "8p101x"]
+  name: "Physics-Scored Synchrotron Super-Resolution: Domain Shift vs. Registration Jitter"
+  primary_tracks: ["2p026x"]
+  exploratory_tracks: ["8p101x"]
   seeds: [42, 137, 2026]
   training_regimes:
-    synthetic_clean: "HR rung blurred + downsampled at exact true magnification ratio (no added noise)"
-    synthetic_noisy: "HR rung blurred + downsampled at exact true magnification ratio + calibrated sCMOS noise"
-    real_paired: "Measured lower-resolution rung aligned via frozen 7-DOF benchmark transform"
-  evaluation_target: "Real paired test slabs only (image metrics + OpenImpala transport + threshold sensitivity)"
+    synthetic_clean: "HR rung blurred + downsampled at exact true magnification ratio (0 registration jitter)"
+    synthetic_noisy: "HR rung blurred + downsampled + calibrated sCMOS noise (0 registration jitter)"
+    synthetic_jittered: "Control: HR rung blurred + downsampled + sCMOS noise + matched ~2.5 HR-voxel 3D registration jitter"
+    real_paired: "Measured lower-resolution rung aligned via 7-DOF transform (refitted on 32-bit float)"
+  evaluation_target: "Real paired test slabs only (OpenImpala PDE transport + threshold sensitivity + image metrics)"
 
 tasks:
   t1:
@@ -36,14 +38,15 @@ tasks:
     beamline: "DLS I13-2"
     primary_reference_track: "raw_float32"
     secondary_reference_track: "cleaned_dering_v1"
-    input_modality: "Lower-resolution I13-2 float32 rung at true magnification ratios (1.604x, 2.026x, 2.493x, 5.051x, 8.101x)"
-    target_modality: "Higher-resolution I13-2 float32 rung resampled via frozen 7-DOF transform"
-    baselines: ["Tricubic", "3D U-Net", "SwinIR", "OpenLSR-X"]
+    input_modality: "Lower-resolution I13-2 float32 rung at true magnification ratios (1.604x, 2.026x, 2.493x, 5.051x; exploratory 8.101x)"
+    target_modality: "Higher-resolution I13-2 float32 rung resampled via 32-bit-refitted 7-DOF transform"
+    baselines: ["Tricubic", "SRResNet-2.5D", "SwinIR-2.5D (L1)", "OpenLSR-X (SwinIR + Conservation/Topology)"]
     threshold_rule: >
       One fixed Otsu threshold calibrated on the reference volume is applied identically to affine-aligned
       prediction and reference volumes before OpenImpala PDE scoring, with +/-5% dynamic-range sensitivity reported.
     tracks:
       1p604x:
+        role: "core"
         lr_scan: "169068"
         lr_voxel_um: 2.6
         ruby_scaled_lr_voxel_um: 2.5945
@@ -52,6 +55,7 @@ tasks:
         ruby_scaled_hr_voxel_um: 1.6212
         true_scale_ratio: 1.6039
       2p026x:
+        role: "core_headline"
         lr_scan: "169067"
         lr_voxel_um: 1.625
         ruby_scaled_lr_voxel_um: 1.6212
@@ -60,6 +64,7 @@ tasks:
         ruby_scaled_hr_voxel_um: 0.8006
         true_scale_ratio: 2.0258
       2p493x:
+        role: "core"
         lr_scan: "169066"
         lr_voxel_um: 0.8125
         ruby_scaled_lr_voxel_um: 0.8006
@@ -68,6 +73,7 @@ tasks:
         ruby_scaled_hr_voxel_um: 0.3211
         true_scale_ratio: 2.4934
       5p051x:
+        role: "core"
         lr_scan: "169067"
         lr_voxel_um: 1.625
         ruby_scaled_lr_voxel_um: 1.6212
@@ -76,6 +82,7 @@ tasks:
         ruby_scaled_hr_voxel_um: 0.3211
         true_scale_ratio: 5.0511
       8p101x:
+        role: "exploratory"
         lr_scan: "169068"
         lr_voxel_um: 2.6
         ruby_scaled_lr_voxel_um: 2.5945
@@ -83,9 +90,9 @@ tasks:
         hr_voxel_um: 0.325
         ruby_scaled_hr_voxel_um: 0.3211
         true_scale_ratio: 8.1014
-        transform_composition: "chained_adjacent_7dof_only"
+        transform_composition: "chained_adjacent_7dof_only_exploratory"
     required_keys: ["pred"]
-    primary_metrics: ["psnr_db", "ssim", "fsc_0p5_cyc_per_vox", "d_eff_rel_err", "tortuosity_rel_err", "ssa_rel_err", "porosity_abs_err"]
+    primary_metrics: ["d_eff_rel_err", "tortuosity_rel_err", "ssa_rel_err", "porosity_abs_err", "psnr_db", "ssim", "fsc_0p5_cyc_per_vox"]
 
   t2:
     name: "T2: Chemical Super-Resolution and Fusion"
@@ -93,9 +100,10 @@ tasks:
     primary_reference_track: "raw_float32"
     secondary_reference_track: "cleaned_dering_v1"
     split_protocol: "leave_one_slice_out_4fold_cv"
+    statistical_footprint_note: "4 paired slices of 40x40 (~2,200 in-pellet pixels total); favors zero-shot / self-supervised forward-PSF fusion (X-FUSE, Guided Filter) over large supervised models."
     input_modalities: ["50 um DIAD XRD-CT Na/Zn maps (+47.5 deg corrected)", "Co-registered 0.54 um DIAD float32 XCT"]
     target_modality: "25 um DIAD XRD-CT reference maps at z = 9, 14, 17, 18 (43324, 43322, 43323, 43325)"
-    baselines: ["Bicubic", "Guided Filter", "Dual-Encoder U-Net", "X-FUSE"]
+    baselines: ["Bicubic", "Guided Filter", "X-FUSE (2D JBU-Gating)", "X-FUSE (2D Cross-Attn)", "X-FUSE (3D LOSO Triplane)"]
     evaluation_cutoff_cyc_per_px: 0.43
     resolution_ratio_summary:
       mean_25um_raw_half_frc0p5_um: 64.3
@@ -112,7 +120,8 @@ tasks:
       43323: {scan_50um: 43398, z_index: 17, zn_fraction: 0.252, margin_dr: 0.0140, status: "CLEAR_MARGIN"}
       43325: {scan_50um: 43399, z_index: 18, zn_fraction: 0.096, margin_dr: 0.0254, status: "CLEAR_MARGIN"}
     required_keys: ["zn", "na"]
-    primary_metrics: ["mean_bandlimited_reduced_chi2", "mean_bandlimited_rmse", "in_pellet_na_zn_corr_abs_err", "reaction_front_pos_err_um"]
+    primary_metrics: ["mean_bandlimited_rmse", "in_pellet_na_zn_corr_abs_err", "reaction_front_pos_err_um"]
+    secondary_metrics: ["mean_bandlimited_reduced_chi2"]
 
   t3:
     name: "T3: Cross-Beamline Tomographic Registration"

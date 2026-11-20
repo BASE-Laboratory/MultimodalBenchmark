@@ -404,8 +404,17 @@ def estimate_odd_even_noise_floor(
     sinogram_at: np.ndarray,
     angles_deg: np.ndarray,
     center_px: Optional[float] = None,
+    smooth_sigma_px: float = 1.5,
 ) -> Tuple[np.ndarray, np.ndarray, FRCResult]:
-    """Reconstruct odd and even angular projections independently to estimate full-map variance sigma^2_ref(x,y)."""
+    """Reconstruct odd and even angular projections independently to estimate full-map variance sigma^2_ref(x,y).
+
+    A single-pixel squared difference `0.25 * (E - O)^2` is a 1-DOF chi^2_1 variable with mode at 0 and
+    E[1 / chi^2_1] = infinity, causing reduced chi^2 to blow up by 100-1000x wherever E(x,y) ~= O(x,y) by chance
+    or in background air pixels. Spatial Gaussian pooling (`smooth_sigma_px=1.5`, ~28 effective DOFs) plus an
+    in-support variance floor yields a stable, well-calibrated local variance estimator.
+    """
+    from scipy.ndimage import gaussian_filter
+
     sino = np.asarray(sinogram_at, dtype=np.float64)
     ang = np.asarray(angles_deg, dtype=np.float64)
     if ang.size > 2 and abs(abs(float(ang[-1] - ang[0])) - 360.0) < 0.35:
@@ -415,10 +424,13 @@ def estimate_odd_even_noise_floor(
     rec_even = reconstruct_sinogram_2d(sino[0::2], ang[0::2], center_px=center_px, circle=False)
     rec_odd = reconstruct_sinogram_2d(sino[1::2], ang[1::2], center_px=center_px, circle=False)
 
-    # Full map is average of even and odd half-maps -> Var(0.5*(E+O)) = 0.25 * (E - O)^2
     raw_var = 0.25 * (rec_even.astype(np.float64) - rec_odd.astype(np.float64)) ** 2
-    floor = float(np.percentile(raw_var, 25.0)) * 0.25 + 1e-8
-    sigma2 = np.maximum(raw_var, floor).astype(np.float32)
+    pooled_var = gaussian_filter(raw_var, sigma=max(float(smooth_sigma_px), 0.5), mode="nearest")
+    peak_amp = float(np.percentile(np.abs(rec_full), 95.0))
+    support = np.abs(rec_full) > 0.15 * max(peak_amp, 1e-8)
+    ref_pool = pooled_var[support] if int(np.count_nonzero(support)) >= 8 else pooled_var.ravel()
+    floor = max(float(np.median(ref_pool)) * 0.10, 1e-6)
+    sigma2 = np.maximum(pooled_var, floor).astype(np.float32)
     frc = compute_2d_frc(rec_even, rec_odd)
     return rec_full, sigma2, frc
 

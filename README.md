@@ -16,7 +16,8 @@ The dataset captures a binderless **Zn-doped Zeolite 13X** catalyst fragment mou
 MultimodalBenchmark/
 ├── configs/
 │   ├── manifest.yaml                  # Verified Zenodo DOIs, MD5s, shapes & HDF5 paths
-│   ├── i13_benchmark_transforms.json  # Frozen 7-DOF transforms & ruby-sphere scale ratios
+│   ├── i13_benchmark_transforms.json  # Provisional 7-DOF transforms (refit on float32 on SCARF)
+│   ├── i13_certified_regions.yaml     # OpenLSR-X --certified-regions compatible transform YAML
 │   ├── croissant.json                 # MLCommons Croissant 1.0 JSON-LD metadata (NeurIPS D&B)
 │   ├── tasks/tasks.yaml               # Formal YAML specs for Tasks T1, T2, T3 & optional T4
 │   └── baselines/                     # 3-seed Synthetic-vs-Real T1 & 4-fold LOSO T2 configs
@@ -41,16 +42,16 @@ MultimodalBenchmark/
 
 ## `Zn-13X-Bench` Tasks & Two-Track Reference Versioning
 
-- **Primary Reference Track (`raw_float32`, Default):** Registered, **uncleaned** `32-bit float` sub-volumes resampled via the frozen 7-DOF transforms in [`configs/i13_benchmark_transforms.json`](configs/i13_benchmark_transforms.json).
+- **Primary Reference Track (`raw_float32`, Default):** Registered, **uncleaned** `32-bit float` sub-volumes resampled via the 7-DOF transforms in [`configs/i13_benchmark_transforms.json`](configs/i13_benchmark_transforms.json) (*provisional parameters fitted on 8-bit previews; refit scheduled directly on `32-bit float` volumes in [`scripts/slurm/01_stage0_audit_and_extract.sh`](scripts/slurm/01_stage0_audit_and_extract.sh)*).
 - **Cleaned Track (`cleaned_dering_v1`, Secondary Documented Track):** Same sub-volumes after frozen conservative polar de-ringing (`98.7–99.2%` ground-truth phantom edge retention; $|r(\Delta_1, \text{Zn})| \le 0.026$), ruby `z`-masking, and XRD-CT `360°`/COR fixes, published with exact difference maps (polynomial cupping and axial $z$-detrending excluded to preserve real $\text{Zn}/\text{Na}$ chemistry).
-- **Headline Experiment (`T1`):** Compare models (`3D U-Net`, `SwinIR`, `OpenLSR-X`) trained on **synthetic degradations** (blur + downsample, with/without noise) vs. **real lower-resolution rungs** (`2.026×` and `8.101×`, 3 seeds), tested exclusively on real pairs and scored with both image metrics and `OpenImpala` transport.
+- **Headline Experiment (`T1`):** Compare `OpenLSR-X v0.2.1` backbones (`SRResNet/SRGAN`, `SwinIR`, and `OpenLSR-X` with conservation/topology/FFL losses) trained across four controlled regimes—`synthetic_clean`, `synthetic_noisy`, **`synthetic_jittered`** (`~2.5` HR-voxel 3D registration-jitter control separating misalignment smoothing from physical domain shift), and `real_paired`—on the primary `2.026×` track (36 GPU runs; `8.101×` retained as exploratory due to `r = 0.07` direct overlap), scored with image metrics and `OpenImpala` PDE transport.
 
 | Task | Input | Reference (`raw_float32` Primary) | Baselines | Metrics |
 |---|---|---|---|---|
-| **T1: Real-Pair XCT Super-Resolution** | Lower-res I13-2 `float32` rung at true ratios (`1.604×, 2.026×, 2.493×, 5.051×, 8.101×`) | Higher-res rung resampled via frozen 7-DOF transform (LR-voxel-buffered slabs above ruby shadow) | `Tricubic`, `3D U-Net`, `SwinIR`, `OpenLSR-X` | PSNR (`full`, `fringe_masked`, `bandlimited`), SSIM, 3D FSC; **OpenImpala** $D_{\text{eff}}/D_0, \tau$, SSA, porosity (+ `±5%` threshold sensitivity) |
-| **T2: Chemical Super-Resolution & Fusion** | `50 µm` XRD-CT Na/Zn maps (`103.6 µm` SB-FRC) + co-registered `0.54 µm` DIAD XCT | `25 µm` XRD-CT maps at `z = 9, 14, 17, 18` (`58.5 µm` SB-FRC; 4-fold Leave-One-Slice-Out CV) | `Bicubic`, `Guided Filter`, `Dual-Encoder U-Net`, `X-FUSE` | Band-limited (`k ≤ 0.43 cyc/px`) variance-weighted $\chi^2_\nu$ & RMSE; in-pellet Na/Zn correlation; reaction-front position (`µm`) |
+| **T1: Real-Pair XCT Super-Resolution** | Lower-res I13-2 `float32` rung at true ratios (`1.604×, 2.026×, 2.493×, 5.051×`; `8.101×` exploratory) | Higher-res rung resampled via 7-DOF transform (LR-voxel-buffered slabs above ruby shadow) | `Tricubic`, `SRResNet`, `SwinIR`, `OpenLSR-X` (`openlsrx fit`) | PSNR (`full`, `fringe_masked`, `bandlimited`), SSIM, 3D FSC; **OpenImpala** $D_{\text{eff}}/D_0, \tau$, SSA, porosity (+ `±5%` threshold sensitivity) |
+| **T2: Chemical Super-Resolution & Fusion** | `50 µm` XRD-CT Na/Zn maps (`103.6 µm` SB-FRC) + co-registered `0.54 µm` DIAD XCT | `25 µm` XRD-CT maps at `z = 9, 14, 17, 18` (`4 × 40 × 40`, `~2,200` in-pellet px; 4-fold LOSO CV) | `Bicubic`, `Guided Filter`, `X-FUSE` (`xfuse fuse` / `fuse-3d`) | Band-limited (`k ≤ 0.43 cyc/px`) RMSE & reaction-front position (`µm`) primary; in-pellet Na/Zn corr & smoothed $\chi^2_\nu$ diagnostic |
 | **T3: Cross-Beamline Registration** *(Gated on Stage 0C)* | Unaligned I13-2 (`1.625 µm`) & DIAD (`0.54 µm`) `float32` XCT | Fiducial-verified 7-DOF transform from Stage 0C *(pending SCARF/Hamilton run)* | `3-DOF Rigid`, `7-DOF NMI`, `VoxelMorph` | Disjoint fiducial TRE (`µm`); scale recovery (`%`); `2×2×2` octant residual drift (`µm`) |
-| **T4: Sparse-View Reconstruction** *(Optional)* | Subsampled `25 µm` XRD-CT sinograms (`20, 40` views) | Full `40 × 79` continuum-subtracted reconstruction | `FBP`, `SIRT`, `U-Net Post-Processing` | Variance-weighted $\chi^2_\nu$, RMSE, 2D `FRC(0.5)` / `SB-FRC(0.5)` |
+| **T4: Sparse-View Reconstruction** *(Optional)* | Subsampled `25 µm` XRD-CT sinograms (`10, 20, 40` views) | Full `40 × 79` continuum-subtracted reconstruction | `FBP`, `Non-Neg SIRT`, `U-Net Post-Processing` | Smoothed odd/even $\chi^2_\nu$, RMSE, 2D `FRC(0.5)` / `SB-FRC(0.5)` |
 
 ---
 

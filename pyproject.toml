@@ -10,8 +10,14 @@ readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 authors = [
+  { name = "James Le Houx", email = "j.lehoux@greenwich.ac.uk" },
   { name = "Calum Green" },
-  { name = "James Le Houx" },
+  { name = "Sharif Ahmed" },
+  { name = "Shashidhara Marathe" },
+  { name = "Liam Perera" },
+  { name = "Alberto Leonardi" },
+  { name = "Killian Gmyrek" },
+  { name = "Daniele Dini" },
 ]
 keywords = [
   "synchrotron",
@@ -40,7 +46,7 @@ registration = [
   "matplotlib>=3.7",
 ]
 transport = [
-  "openimpala>=4.6.0",
+  "openimpala>=4.6.0,<6.0.0",
 ]
 notebooks = [
   "matplotlib>=3.7",
@@ -50,7 +56,7 @@ dev = [
   "pytest>=7.4",
   "SimpleITK>=2.3",
   "matplotlib>=3.7",
-  "openimpala>=4.6.0",
+  "openimpala>=4.6.0,<6.0.0",
 ]
 
 [project.scripts]
