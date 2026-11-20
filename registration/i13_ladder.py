@@ -180,7 +180,7 @@ def resample_moving_to_fixed_zyx(
     transform: SimilarityTransform3D | BasecoatSimilarityTransform3D,
     moving_origin_zyx_um: Tuple[float, float, float] = (0.0, 0.0, 0.0),
     fixed_origin_zyx_um: Tuple[float, float, float] = (0.0, 0.0, 0.0),
-    interpolator: Optional[int] = None,
+    interpolator: Optional[int | str] = None,
 ) -> np.ndarray:
     """Resample moving 3D volume onto fixed physical grid using `basecoat.resample_volume`."""
     bc_tx = (
@@ -190,19 +190,23 @@ def resample_moving_to_fixed_zyx(
     )
     moving_axes = tuple(
         AxisSpec(name=ax, kind="space", unit="um", scale=float(sp), offset=float(orig))
-        for ax, sp, orig in zip(("z", "y", "x"), moving_spacing_zyx_um, moving_origin_zyx_um)
+        for ax, sp, orig in zip(("z", "y", "x"), moving_spacing_zyx_um, moving_origin_zyx_um, strict=True)
     )
     fixed_axes = tuple(
         AxisSpec(name=ax, kind="space", unit="um", scale=float(sp), offset=float(orig))
-        for ax, sp, orig in zip(("z", "y", "x"), fixed_spacing_zyx_um, fixed_origin_zyx_um)
+        for ax, sp, orig in zip(("z", "y", "x"), fixed_spacing_zyx_um, fixed_origin_zyx_um, strict=True)
     )
-    # Map SimpleITK interpolator enum constants (sitkNearestNeighbor == 1, sitkLinear == 2, sitkBSpline == 3)
-    if interpolator is None or interpolator == 2:
+    # Map SimpleITK interpolator enum constants (sitkNearestNeighbor == 1, sitkLinear == 2, sitkBSpline == 23)
+    if interpolator is None or interpolator in (2, "linear"):
         spline_order = 1
-    elif interpolator == 1:
+    elif interpolator in (1, "nearest"):
         spline_order = 0
-    else:
+    elif interpolator in (23, "cubic", "bspline"):
         spline_order = 3
+    else:
+        raise ValueError(
+            f"Unsupported interpolator={interpolator!r}; pass None/'linear' (2), 'nearest' (1), or 'bspline' (23)."
+        )
 
     mov_vol = Volume(np.asarray(moving_zyx, dtype=np.float32), axes=moving_axes, space=bc_tx.to_space)
     out_vol = resample_volume(

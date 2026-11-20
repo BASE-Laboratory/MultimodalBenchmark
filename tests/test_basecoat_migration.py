@@ -6,7 +6,9 @@ import ast
 from pathlib import Path
 
 import numpy as np
+import pytest
 import SimpleITK as sitk
+import zarr
 from basecoat import read_ome_zarr
 
 from baselines.integrations import (
@@ -27,6 +29,9 @@ def test_ome_zarr_packager_roundtrips_via_basecoat_with_provenance(tmp_path: Pat
         extra_attrs={"track": "raw_float32", "scan": 169066},
     )
 
+    grp = zarr.open_group(str(store), mode="r")
+    assert grp.attrs["multiscales"][0]["name"] == "calibrated_subvol"
+
     lvl0 = read_ome_zarr(store, level=0)
     lvl1 = read_ome_zarr(store, level=1)
     np.testing.assert_allclose(lvl0.data, vol)
@@ -40,6 +45,7 @@ def test_ome_zarr_packager_roundtrips_via_basecoat_with_provenance(tmp_path: Pat
 
 
 def test_frozen_7dof_basecoat_transform_matches_sitk_interior_resampling() -> None:
+
     hr_shape = (48, 48, 48)
     lr_shape = (32, 32, 32)
     hr_vox = 0.8125
@@ -81,6 +87,17 @@ def test_frozen_7dof_basecoat_transform_matches_sitk_interior_resampling() -> No
 
     # Interior sub-cube strictly inside [0, N_lr - 1]^3 matches SimpleITK to float32 precision
     np.testing.assert_allclose(res_bc[8:40, 8:40, 8:40], res_sitk[8:40, 8:40, 8:40], atol=1e-5)
+
+    # Verify nearest (1) and BSpline (23) enum constants map cleanly and bogus values raise
+    res_nn = resample_moving_to_fixed_zyx(
+        lr_vol, (lr_vox,) * 3, (16, 16, 16), (hr_vox,) * 3, bc_tx, interpolator=sitk.sitkNearestNeighbor
+    )
+    res_bs = resample_moving_to_fixed_zyx(
+        lr_vol, (lr_vox,) * 3, (16, 16, 16), (hr_vox,) * 3, bc_tx, interpolator=sitk.sitkBSpline
+    )
+    assert res_nn.shape == res_bs.shape == (16, 16, 16)
+    with pytest.raises(ValueError, match="Unsupported interpolator"):
+        resample_moving_to_fixed_zyx(lr_vol, (lr_vox,) * 3, (8, 8, 8), (hr_vox,) * 3, bc_tx, interpolator=999)
 
 
 def test_no_direct_zarr_or_numcodecs_imports_outside_tests() -> None:

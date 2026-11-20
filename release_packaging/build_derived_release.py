@@ -63,10 +63,10 @@ def write_ome_zarr_v04(
         AxisSpec(name="c", kind="channel", unit="none", scale=1.0)
         if ax == "c"
         else AxisSpec(name=str(ax), kind="space", unit="um", scale=float(sc))
-        for ax, sc in zip(axes_names, voxel_size_um)
+        for ax, sc in zip(axes_names, voxel_size_um, strict=True)
     )
 
-    spatial_dims = [s for s, ax in zip(arr.shape, axes_names) if ax != "c"]
+    spatial_dims = [s for s, ax in zip(arr.shape, axes_names, strict=True) if ax != "c"]
     eff_levels = 1 if (spatial_dims and min(spatial_dims) < 32) else max(1, int(multiscale_levels))
 
     prov: Dict[str, Any] = {}
@@ -79,7 +79,7 @@ def write_ome_zarr_v04(
     return write_ome_zarr(
         vol,
         out,
-        name=out.stem,
+        name=out.stem.removesuffix(".ome"),
         multiscale_levels=eff_levels,
         overwrite=True,
     )
