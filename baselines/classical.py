@@ -311,6 +311,8 @@ def sirt_reconstruct_2d(
         1.0,
     )
 
+    span = float(np.ptp(ang)) if n_ang > 1 else 180.0
+    scale = 0.5 if span > 200.0 else 1.0
     x = np.zeros((n_trans, n_trans), dtype=np.float64)
     sino_t = sino.T  # (n_trans, n_ang) matching skimage.transform.radon convention
     for _ in range(int(n_iter)):
@@ -320,7 +322,7 @@ def sirt_reconstruct_2d(
         x = x + float(relaxation) * (bp / col_sums) * circ_mask
         if non_negative:
             x = np.maximum(x, 0.0)
-    return x.astype(np.float32)
+    return (x * scale).astype(np.float32)
 
 
 # ---------------------------------------------------------------------------

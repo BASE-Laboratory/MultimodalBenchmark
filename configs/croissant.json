@@ -40,6 +40,11 @@
   "license": "https://creativecommons.org/licenses/by/4.0/",
   "url": "https://github.com/BASE-Laboratory/MultimodalBenchmark",
   "version": "2.0.0",
+  "creator": [
+    {"@type": "sc:Person", "name": "James Le Houx", "affiliation": {"@type": "sc:Organization", "name": "BASE Laboratory"}},
+    {"@type": "sc:Person", "name": "Calum Green", "affiliation": {"@type": "sc:Organization", "name": "Diamond Light Source"}}
+  ],
+  "citation": "Green, C. et al., Three-dimensional, multimodal synchrotron data for machine learning applications, Scientific Data 12, 329 (2025). https://doi.org/10.1038/s41597-025-04605-9",
   "isBasedOn": [
     "https://doi.org/10.1038/s41597-025-04605-9",
     "https://doi.org/10.5281/zenodo.13329639",
