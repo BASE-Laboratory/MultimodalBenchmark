@@ -1,0 +1,60 @@
+cff-version: 1.2.0
+title: "MultimodalBenchmark (Zn-13X-Bench): 3D Synchrotron XCT & XRD-CT Benchmark Suite"
+message: "If you use MultimodalBenchmark in your research, please cite both this software and the Scientific Data paper below."
+type: software
+version: 2.0.1
+date-released: "2026-11-22"
+license: BSD-3-Clause
+repository-code: "https://github.com/BASE-Laboratory/MultimodalBenchmark"
+authors:
+  - family-names: Le Houx
+    given-names: James
+    orcid: "https://orcid.org/0000-0002-1576-0673"
+    affiliation: "BASE Laboratory, School of Engineering, University of Greenwich; ISIS Neutron and Muon Source, Rutherford Appleton Laboratory; The Faraday Institution"
+  - family-names: Green
+    given-names: Calum
+    affiliation: "Department of Mechanical Engineering, Imperial College London; Diamond Light Source"
+  - family-names: Ahmed
+    given-names: Sharif
+    orcid: "https://orcid.org/0000-0002-3290-3592"
+    affiliation: "Diamond Light Source, Harwell Science and Innovation Campus, Didcot, United Kingdom"
+  - family-names: Marathe
+    given-names: Shashidhara
+    affiliation: "Diamond Light Source, Harwell Science and Innovation Campus, Didcot, United Kingdom"
+  - family-names: Perera
+    given-names: Liam
+    affiliation: "Diamond Light Source, Harwell Science and Innovation Campus, Didcot, United Kingdom"
+  - family-names: Leonardi
+    given-names: Alberto
+    affiliation: "Department of Mechanical Engineering, Imperial College London"
+  - family-names: Gmyrek
+    given-names: Killian
+    affiliation: "Department of Mechanical Engineering, Imperial College London"
+  - family-names: Dini
+    given-names: Daniele
+    affiliation: "Department of Mechanical Engineering, Imperial College London"
+preferred-citation:
+  type: article
+  title: "Three-dimensional, multimodal synchrotron data for machine learning applications"
+  authors:
+    - family-names: Green
+      given-names: Calum
+    - family-names: Ahmed
+      given-names: Sharif
+    - family-names: Marathe
+      given-names: Shashidhara
+    - family-names: Perera
+      given-names: Liam
+    - family-names: Leonardi
+      given-names: Alberto
+    - family-names: Gmyrek
+      given-names: Killian
+    - family-names: Dini
+      given-names: Daniele
+    - family-names: Le Houx
+      given-names: James
+  journal: "Scientific Data"
+  volume: 12
+  start: 329
+  year: 2025
+  doi: "10.1038/s41597-025-04605-9"

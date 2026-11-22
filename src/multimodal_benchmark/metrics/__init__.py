@@ -23,8 +23,18 @@ from .fusion import (
 from .registration_eval import (
     compute_t3_registration_metrics,
 )
+from .fft_elasticity import (
+    FFTElasticityResult,
+    effective_modulus_fft,
+    hashin_shtrikman_isotropic_bounds,
+    homogenize_elastic_fft,
+    laminate_exact_stiffness,
+    voigt_reuss_bounds,
+)
 from .mechanics import (
+    compute_fft_mechanics_metrics,
     compute_mechanics_discrepancy,
+    compute_mechanics_metrics,
     compute_sms_mechanics_metrics,
     is_sms_available,
 )
@@ -35,6 +45,7 @@ from .transport import (
 )
 
 __all__ = [
+    "FFTElasticityResult",
     "FSC3DResult",
     "affine_cupping_normalize",
     "compute_3d_fsc",
@@ -53,7 +64,14 @@ __all__ = [
     "calibrate_frozen_pore_threshold",
     "compute_openimpala_transport_metrics",
     "compute_transport_discrepancy",
+    "compute_fft_mechanics_metrics",
     "compute_mechanics_discrepancy",
+    "compute_mechanics_metrics",
     "compute_sms_mechanics_metrics",
+    "effective_modulus_fft",
+    "hashin_shtrikman_isotropic_bounds",
+    "homogenize_elastic_fft",
     "is_sms_available",
+    "laminate_exact_stiffness",
+    "voigt_reuss_bounds",
 ]

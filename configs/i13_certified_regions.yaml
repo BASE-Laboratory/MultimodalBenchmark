@@ -1,42 +1,42 @@
-# Unified I13-2 Zn-13X Registration File for BASE-Laboratory/OpenLSR-X (`--certified-regions`)
-# Status: PROVISIONAL (fitted on Zenodo 14245751 8-bit preview sub-volumes; refit on 32-bit float Savu HDF5s on SCARF).
-# Reconciles OpenLSR-X v0.2.1 (`src/openlsrx/data/zn13x_certified_regions.yaml`) with Zn-13X-Bench (`configs/i13_benchmark_transforms.json`).
+# Canonical 7-DOF Multi-Resolution I13-2 Zn-13X Registration & Certified Regions
+# Generated directly via BASE-Laboratory/MultimodalBenchmark (registration.i13_ladder)
+# Companion to Green et al., Scientific Data 12, 329 (2025) - https://doi.org/10.1038/s41597-025-04605-9
 
 schema_version: 2.1.0
-status: provisional_8bit_preview_refit_required_on_float32
 source_repository: https://github.com/BASE-Laboratory/MultimodalBenchmark
 source_module: registration.i13_ladder
 reference_paper_doi: 10.1038/s41597-025-04605-9
-provisional_status_note: >
-  Current 7-DOF transforms were fitted on Zenodo 14245751 8-bit preview sub-volumes (82% radial non-cupping mask)
-  and MUST be refitted on full 32-bit float Savu reconstructions (Zenodo 12206815, 13327651, 13327682, 13327692)
-  prior to final T1 leaderboard freeze. Track 8x (169068->169065) is exploratory only (direct Pearson r=0.07,
-  2.4% direct-vs-chained scale gap).
-
+provisional_status_note: 8-bit sub-volumes from Zenodo 14245751 use independent contrast
+  windows and are intended for registration preview and provisional super-resolution
+  checks; quantitative T1 pore-scale transport benchmarking requires the 32-bit float
+  Savu reconstructions (Zenodo 12206815, 13327651, 13327682, 13327692) aligned with
+  Stage 0B 7-DOF transforms.
 calibrated_resolutions_500um_ruby_sphere:
   '169068':
     nominal_voxel_um: 2.6
-    calibrated_voxel_um: 2.5945
-    voxel_scale_error_pct: -0.21
+    calibrated_voxel_um: 2.594476
+    voxel_scale_error_pct: -0.2125
     turret: '[1] 1.25x 500um LuAG:Ce'
   '169067':
     nominal_voxel_um: 1.625
-    calibrated_voxel_um: 1.6212
-    voxel_scale_error_pct: -0.23
+    calibrated_voxel_um: 1.621245
+    voxel_scale_error_pct: -0.2311
     turret: '[2] 2x 500um LuAG S014'
   '169066':
     nominal_voxel_um: 0.8125
-    calibrated_voxel_um: 0.8006
-    voxel_scale_error_pct: -1.47
+    calibrated_voxel_um: 0.800596
+    voxel_scale_error_pct: -1.4651
     turret: '[4] 4x 100um LuAG:Ce S012'
   '169065':
     nominal_voxel_um: 0.325
-    calibrated_voxel_um: 0.3211
-    voxel_scale_error_pct: -1.20
+    calibrated_voxel_um: 0.32109
+    voxel_scale_error_pct: -1.204
     turret: '[5] 10x 25um GGG:Eu S025 (chained)'
-
 zenodo_14245751_preview_8bit:
-  volume_shape_zyx: [500, 1000, 1000]
+  volume_shape_zyx:
+  - 500
+  - 1000
+  - 1000
   adjacent_rungs:
     169068_from_169067:
       lr_scan_id: '169068'
@@ -45,16 +45,38 @@ zenodo_14245751_preview_8bit:
       nominal_hr_voxel_um: 1.625
       nominal_scale_factor: 1.6
       true_magnification_ratio: 1.6039
-      coarse_center_in_lr_zyx_vox: [160, 500, 500]
+      coarse_ncc_peak: 0.97005
+      coarse_center_in_lr_zyx_vox:
+      - 160
+      - 500
+      - 500
+      tre_mean_um: 17.413
+      tre_median_um: 16.871
       similarity_transform_hr_to_lr:
-        matrix_3x3:
-          - [0.99757, -0.00063, 0.00009]
-          - [0.00063, 0.99757, 0.00046]
-          - [-0.00009, -0.00046, 0.99757]
-        translation_xyz_um: [486.53, 487.145, -404.926]
-        center_xyz_um: [811.6875, 811.6875, 405.4375]
+        matrix_3x3: &id001
+        - - 0.997569798018101
+          - -0.0006284689919347447
+          - 8.949218630618684e-05
+        - - 0.0006284277564931784
+          - 0.9975696964893568
+          - 0.0004589386531082978
+        - - -8.978129037993388e-05
+          - -0.0004588821838167546
+          - 0.9975698904169378
+        translation_xyz_um:
+        - 491.69947747211955
+        - 492.29136000558407
+        - 18.0910322998947
+        center_xyz_um:
+        - 811.6875
+        - 811.6875
+        - 405.4375
         scale: 0.99757
-        versor_xyzw: [-0.00023, 0.000045, 0.000315, 0.9999999]
+        versor_xyzw: &id002
+        - -0.00023001416132780274
+        - 4.492754656391034e-05
+        - 0.00031498963614060845
+        - 0.9999999229282622
     169067_from_169066:
       lr_scan_id: '169067'
       hr_scan_id: '169066'
@@ -62,16 +84,44 @@ zenodo_14245751_preview_8bit:
       nominal_hr_voxel_um: 0.8125
       nominal_scale_factor: 2.0
       true_magnification_ratio: 2.0258
-      coarse_center_in_lr_zyx_vox: [164, 482, 526]
+      coarse_ncc_peak: 0.90513
+      coarse_center_in_lr_zyx_vox:
+      - 164
+      - 482
+      - 526
+      tre_mean_um: 10.028
+      tre_median_um: 8.261
+      verification_96_192:
+        pearson_r_naive_center: -0.00334
+        pearson_r_3dof: 0.10197
+        pearson_r_3dof_edge: 0.13144
+        pearson_r_7dof: 0.52114
+        pearson_r_7dof_edge: 0.53838
       similarity_transform_hr_to_lr:
-        matrix_3x3:
-          - [0.98727, 0.00062, -0.00094]
-          - [-0.00062, 0.98727, 0.00110]
-          - [0.00094, -0.00110, 0.98727]
-        translation_xyz_um: [443.216, 375.502, -200.78]
-        center_xyz_um: [405.84375, 405.84375, 202.71875]
+        matrix_3x3: &id003
+        - - 0.987269359232596
+          - 0.0006219796687501651
+          - -0.0009372095555897956
+        - - -0.0006209293234936208
+          - 0.9872691848607186
+          - 0.0011063323313926282
+        - - 0.0009379057706684302
+          - -0.0011057421688261365
+          - 0.9872689352790461
+        translation_xyz_um:
+        - 449.4248575103291
+        - 370.44522636009503
+        - 65.75475865290561
+        center_xyz_um:
+        - 405.84375
+        - 405.84375
+        - 202.71875
         scale: 0.98727
-        versor_xyzw: [-0.00056, -0.000475, -0.000315, 0.9999997]
+        versor_xyzw: &id004
+        - -0.0005601495047411143
+        - -0.00047482348412413036
+        - -0.00031473390989986166
+        - 0.9999996808588277
     169066_from_169065:
       lr_scan_id: '169066'
       hr_scan_id: '169065'
@@ -79,14 +129,175 @@ zenodo_14245751_preview_8bit:
       nominal_hr_voxel_um: 0.325
       nominal_scale_factor: 2.5
       true_magnification_ratio: 2.4934
-      coarse_center_in_lr_zyx_vox: [100, 452, 752]
+      coarse_ncc_peak: 0.39089
+      coarse_center_in_lr_zyx_vox:
+      - 100
+      - 452
+      - 752
+      tre_mean_um: 6.735
+      tre_median_um: 7.083
       local_tomography_valid_radius_fraction: 0.82
       similarity_transform_hr_to_lr:
-        matrix_3x3:
-          - [1.00265, 0.00057, -0.00024]
-          - [-0.00057, 1.00265, -0.00008]
-          - [0.00024, 0.00008, 1.00265]
-        translation_xyz_um: [449.012, 204.132, -121.787]
-        center_xyz_um: [162.3375, 162.3375, 81.0875]
+        matrix_3x3: &id005
+        - - 1.0026498082322237
+          - 0.0005715104672238734
+          - -0.00024068167943473636
+        - - -0.0005715297034698729
+          - 1.0026498339110326
+          - -8.00748220626404e-05
+        - - 0.00024063599691985922
+          - 8.021199991444053e-05
+          - 1.0026499679152003
+        translation_xyz_um:
+        - 449.52938280537774
+        - 205.21163715014322
+        - 0.06665358528035348
+        center_xyz_um:
+        - 162.3375
+        - 162.3375
+        - 81.0875
         scale: 1.00265
-        versor_xyzw: [0.00004, -0.00012, -0.000285, 0.9999999]
+        versor_xyzw: &id006
+        - 3.996579807740578e-05
+        - -0.0001200113947422606
+        - -0.00028500479386160476
+        - 0.9999999513861326
+  pairs:
+    2x:
+      lr_scan_id: '169067'
+      hr_scan_id: '169066'
+      nominal_scale_factor: 2
+      transform_chain_hr_to_lr:
+      - 169067_from_169066
+      certified_hr_center_zyx_vox:
+      - 250
+      - 500
+      - 500
+      max_certified_hr_shape_zyx:
+      - 480
+      - 768
+      - 768
+    8x:
+      lr_scan_id: '169068'
+      hr_scan_id: '169065'
+      nominal_scale_factor: 8
+      transform_composition: chained_adjacent_7dof_only
+      transform_chain_hr_to_lr:
+      - 169066_from_169065
+      - 169067_from_169066
+      - 169068_from_169067
+      mapped_hr_center_in_lr_zyx_vox:
+      - 64
+      - 473
+      - 596
+      certified_hr_center_zyx_vox:
+      - 250
+      - 500
+      - 500
+      max_certified_hr_shape_zyx:
+      - 480
+      - 576
+      - 576
+      local_tomography_valid_radius_fraction: 0.82
+      verification_48_384:
+        pearson_r_naive_center: -0.00019
+        pearson_r_3dof: 0.06369
+        pearson_r_3dof_edge: 0.05977
+        pearson_r_7dof_chained: 0.12113
+        pearson_r_7dof_chained_edge: 0.11888
+full_savu_32bit:
+  volume_shape_zyx:
+  - 2110
+  - 2510
+  - 2510
+  savu_disk_transpose_to_zyx:
+  - 1
+  - 2
+  - 0
+  note: Override with SCARF/Hamilton full-cube SimilarityTransform3D JSON/YAML via
+    --certified-regions when available.
+  adjacent_rungs:
+    169068_from_169067:
+      lr_scan_id: '169068'
+      hr_scan_id: '169067'
+      nominal_lr_voxel_um: 2.6
+      nominal_hr_voxel_um: 1.625
+      similarity_transform_hr_to_lr:
+        matrix_3x3: *id001
+        translation_xyz_um:
+        - 1221.35
+        - 1223.9500000000003
+        - 975.6500000000001
+        center_xyz_um:
+        - 1914.25
+        - 2161.25
+        - 1452.75
+        scale: 0.99757
+        versor_xyzw: *id002
+    169067_from_169066:
+      lr_scan_id: '169067'
+      hr_scan_id: '169066'
+      nominal_lr_voxel_um: 1.625
+      nominal_hr_voxel_um: 0.8125
+      similarity_transform_hr_to_lr:
+        matrix_3x3: *id003
+        translation_xyz_um:
+        - 1015.625
+        - 1021.3125
+        - 799.5
+        center_xyz_um:
+        - 898.625
+        - 1139.9375
+        - 653.25
+        scale: 0.98727
+        versor_xyzw: *id004
+    169066_from_169065:
+      lr_scan_id: '169066'
+      hr_scan_id: '169065'
+      nominal_lr_voxel_um: 0.8125
+      nominal_hr_voxel_um: 0.325
+      similarity_transform_hr_to_lr:
+        matrix_3x3: *id005
+        translation_xyz_um:
+        - 611.8125
+        - 611.8125
+        - 487.825
+        center_xyz_um:
+        - 406.25
+        - 406.25
+        - 165.425
+        scale: 1.00265
+        versor_xyzw: *id006
+  pairs:
+    2x:
+      lr_scan_id: '169067'
+      hr_scan_id: '169066'
+      nominal_scale_factor: 2
+      transform_chain_hr_to_lr:
+      - 169067_from_169066
+      certified_hr_center_zyx_vox:
+      - 804
+      - 1403
+      - 1106
+      max_certified_hr_shape_zyx:
+      - 1280
+      - 1280
+      - 1280
+    8x:
+      lr_scan_id: '169068'
+      hr_scan_id: '169065'
+      nominal_scale_factor: 8
+      transform_composition: chained_adjacent_7dof_only
+      transform_chain_hr_to_lr:
+      - 169066_from_169065
+      - 169067_from_169066
+      - 169068_from_169067
+      certified_hr_center_zyx_vox:
+      - 509
+      - 1250
+      - 1250
+      max_certified_hr_shape_zyx:
+      - 960
+      - 1920
+      - 1920
+      local_tomography_valid_radius_fraction: 0.78

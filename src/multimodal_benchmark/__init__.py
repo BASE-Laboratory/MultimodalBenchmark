@@ -1,6 +1,6 @@
 """MultimodalBenchmark: 3D synchrotron XCT + XRD-CT benchmark suite."""
 
-__version__ = "2.0.0"
+__version__ = "2.0.1"
 
 from .manifest import DatasetManifest, load_manifest, resolve_doi, verify_file_md5
 from .io import (
