@@ -1,18 +1,19 @@
 """Split and guard-band data bundle adapter for BASE-Laboratory/X-FUSE (`x_fuse` v1.0.0+).
 
-Note on upstream parity:
-  `X-FUSE` v1.0.0 (`x_fuse.loaders`) already implements out-of-core Savu HDF5 slicing, explicit
-  DIAD scan-ID selection, multi-reflection peak aggregation, and the `+47.5 deg` 50 um motor-zero
-  rotation correction upstream. This benchmark adapter strictly supplies Zn-13X-Bench's 4-fold
-  Leave-One-Slice-Out (LOSO) split masks (`t2_chemical_fusion_loso`) and `+/-100 um` axial guard
-  bands so `xfuse fuse` / `xfuse fuse-3d` runs evaluate on identical folds as external baselines.
+Note on Layer 2 / Layer 4 boundary (`ECOSYSTEM.md`):
+  `X-FUSE` (`x_fuse.loaders`) provides generic synchrotron Savu HDF5 slicing and peak-map readers,
+  while `MultimodalBenchmark` (Layer 4) owns all dataset-specific Zn-13X DIAD scan IDs, the
+  `+47.5 deg` 50 um motor-zero rotation correction, 4-fold Leave-One-Slice-Out (LOSO) split masks
+  (`t2_chemical_fusion_loso`), and `+/-100 um` axial guard bands so `xfuse fuse` / `xfuse fuse-3d`
+  runs evaluate on identical folds as external baselines.
 """
 
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -28,23 +29,23 @@ DEFAULT_SPLITS_PATH = Path(__file__).resolve().parents[2] / "splits" / "benchmar
 
 def load_xfuse_benchmark_t2_bundle(
     xrdct_dir: Path | str,
-    diad_xct_h5: Optional[Path | str] = None,
+    diad_xct_h5: Path | str | None = None,
     splits_path: Path | str = DEFAULT_SPLITS_PATH,
-    loso_fold: Optional[int] = None,
+    loso_fold: int | None = None,
     aggregation: str = "all_sum",
     flip_xrd_x: bool = True,
-    xct_zyx_crop: Tuple[slice, slice, slice] = (slice(150, 2000), slice(350, 2200), slice(350, 2200)),
+    xct_zyx_crop: tuple[slice, slice, slice] = (slice(150, 2000), slice(350, 2200), slice(350, 2200)),
     xct_stride: int = 1,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Load guard-banded 50 um guides, 4-fold LOSO train/test 25 um slices, and optional out-of-core DIAD XCT."""
     xdir = Path(xrdct_dir)
-    with open(splits_path, "r", encoding="utf-8") as fh:
+    with open(splits_path, encoding="utf-8") as fh:
         raw_splits = json.load(fh)
     t2_splits = raw_splits.get("t2_chemical_fusion_loso", raw_splits.get("t3_correlative_fusion"))
     if t2_splits is None:
         raise KeyError(f"Expected 't2_chemical_fusion_loso' in {splits_path}")
 
-    fold_meta: Optional[Dict[str, Any]] = None
+    fold_meta: dict[str, Any] | None = None
     if loso_fold is not None:
         folds = list(t2_splits["loso_folds"].values())
         matching = [f for f in folds if int(f["fold_index"]) == int(loso_fold)]
@@ -63,8 +64,8 @@ def load_xfuse_benchmark_t2_bundle(
     zn_50_all, _ = load_xrdct_volume_50um(xdir, phase="zn", aggregation=aggregation, flip_x=flip_xrd_x)
     train_mask_50 = np.array([sid in set(allowed_50um) for sid in all_50_ids], dtype=bool)
 
-    def _load_25_dict(scan_list: Sequence[int]) -> Dict[int, Dict[str, np.ndarray]]:
-        res: Dict[int, Dict[str, np.ndarray]] = {}
+    def _load_25_dict(scan_list: Sequence[int]) -> dict[int, dict[str, np.ndarray]]:
+        res: dict[int, dict[str, np.ndarray]] = {}
         for sid in scan_list:
             f_na = xdir / f"output_{sid}_na.nxs"
             f_zn = xdir / f"output_{sid}_zn.nxs"
@@ -77,7 +78,7 @@ def load_xfuse_benchmark_t2_bundle(
                 }
         return res
 
-    out: Dict[str, Any] = {
+    out: dict[str, Any] = {
         "loso_fold": loso_fold,
         "fold_metadata": fold_meta,
         "guide_50um_zyx": {"Na": na_50_all, "Zn": zn_50_all},
@@ -102,19 +103,19 @@ load_xfuse_benchmark_t3_bundle = load_xfuse_benchmark_t2_bundle
 
 
 def export_xfuse_t2_fold_ome_zarr(
-    bundle: Dict[str, Any],
+    bundle: dict[str, Any],
     out_dir: Path | str,
     *,
     hr_voxel_um: float = 0.54,
     guide_voxel_um: float = 25.0,
     overwrite: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Package a Task T2 LOSO fold dictionary as calibrated ``.ome.zarr`` stores for ``xfuse fuse-3d``."""
     from basecoat import AxisSpec, Volume, write_ome_zarr
 
     dest = Path(out_dir)
     dest.mkdir(parents=True, exist_ok=True)
-    written: Dict[str, Any] = {"guide_slices": {}}
+    written: dict[str, Any] = {"guide_slices": {}}
 
     if "diad_xct_zyx" in bundle:
         hr_vol = Volume.from_array(

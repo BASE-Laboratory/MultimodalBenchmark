@@ -2,6 +2,8 @@
 
 Official codebase and standardized machine-learning benchmark suite for **Three-dimensional, multimodal synchrotron data for machine learning applications** (*Scientific Data* **12**, 329, 2025; [doi:10.1038/s41597-025-04605-9](https://doi.org/10.1038/s41597-025-04605-9) | [arXiv:2409.07322](https://arxiv.org/abs/2409.07322)).
 
+**Maintainer:** James Le Houx ([BASE Laboratory](https://github.com/BASE-Laboratory))
+
 The dataset captures a binderless **Zn-doped Zeolite 13X** catalyst fragment mounted inside a 1 mm borosilicate glass capillary alongside a 0.5 mm ruby sphere and 0.1–0.4 mm NIST borosilicate calibration beads across two Diamond Light Source (DLS) beamlines and a laboratory diffractometer:
 
 - **DLS I13-2 Multi-Magnification XCT Ladder:** `2.6 µm`, `1.625 µm`, `0.8125 µm`, and `0.325 µm` voxel sizes (`2110 × 2510 × 2510`, 32-bit float + 8-bit cropped sub-volumes).
@@ -32,7 +34,7 @@ MultimodalBenchmark/
 ├── tasks/                             # Task specs & submission schema validators
 ├── splits/                            # LR-voxel-buffered T1 slabs & 4-fold LOSO T2 CV splits
 ├── baselines/                         # Tricubic, Guided Filter, FBP, SIRT, OpenLSR-X & X-FUSE
-├── src/multimodal_benchmark/          # Core I/O, manifest verifier & OpenImpala/FRC/TRE evaluators
+├── src/multimodal_benchmark/          # Core I/O, manifest verifier, OpenImpala & Willot-FFT/SMS evaluators
 ├── DATASHEET.md                       # NeurIPS Datasets & Benchmarks Datasheet (Gebru et al.)
 ├── evaluate.py                        # Unified CLI evaluator outputting JSON + Markdown rows
 └── *.ipynb, DIAD_Savu/, I13_2_Savu/   # Original 2025 Scientific Data companion notebooks
@@ -44,7 +46,7 @@ MultimodalBenchmark/
 
 - **Primary Reference Track (`raw_float32`, Default):** Registered, **uncleaned** `32-bit float` sub-volumes resampled via the 7-DOF transforms in [`configs/i13_benchmark_transforms.json`](configs/i13_benchmark_transforms.json) (*provisional parameters fitted on 8-bit previews; refit scheduled directly on `32-bit float` volumes in [`scripts/slurm/01_stage0_audit_and_extract.sh`](scripts/slurm/01_stage0_audit_and_extract.sh)*).
 - **Cleaned Track (`cleaned_dering_v1`, Secondary Documented Track):** Same sub-volumes after frozen conservative polar de-ringing (`98.7–99.2%` ground-truth phantom edge retention; $|r(\Delta_1, \text{Zn})| \le 0.026$), ruby `z`-masking, and XRD-CT `360°`/COR fixes, published with exact difference maps (polynomial cupping and axial $z$-detrending excluded to preserve real $\text{Zn}/\text{Na}$ chemistry).
-- **Headline Experiment (`T1`):** Compare `OpenLSR-X v0.2.1` backbones (`SRResNet/SRGAN`, `SwinIR`, and `OpenLSR-X` with conservation/topology/FFL losses) trained across four controlled regimes—`synthetic_clean`, `synthetic_noisy`, **`synthetic_jittered`** (`~2.5` HR-voxel 3D registration-jitter control separating misalignment smoothing from physical domain shift), and `real_paired`—on the primary `2.026×` track (36 GPU runs; `8.101×` retained as exploratory due to `r = 0.07` direct overlap), scored with image metrics and `OpenImpala` PDE transport.
+- **Headline Experiment (`T1`):** Compare `OpenLSR-X v0.2.2` backbones (`SRResNet/SRGAN`, `SwinIR`, and `OpenLSR-X` with conservation/topology/FFL losses) trained across four controlled regimes—`synthetic_clean`, `synthetic_noisy`, **`synthetic_jittered`** (`~2.5` HR-voxel 3D registration-jitter control separating misalignment smoothing from physical domain shift), and `real_paired`—on the primary `2.026×` track (36 GPU runs; `8.101×` retained as exploratory due to `r = 0.07` direct overlap), scored with image metrics, `OpenImpala` PDE transport, and optional `--with-mechanics` 3D homogenized stiffness (`Willot 2015` rotated-FFT PCG / `SMS`).
 
 | Task | Input | Reference (`raw_float32` Primary) | Baselines | Metrics |
 |---|---|---|---|---|
