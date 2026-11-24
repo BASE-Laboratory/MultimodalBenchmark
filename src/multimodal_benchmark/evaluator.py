@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 import h5py
 import numpy as np
-from basecoat import read_ome_zarr
+from basecoat import read_ome_zarr, read_volume
 
 from .metrics import (
     compute_image_sr_metrics,
@@ -25,7 +25,7 @@ from tasks.definitions import validate_submission_arrays
 
 
 def load_bundle(path: Path | str) -> Dict[str, Any]:
-    """Load a submission/reference bundle from an OME-Zarr store (`.ome.zarr`/`.zarr`), `.npz`, or `.h5`/`.nxs`."""
+    """Load a submission/reference bundle from `.ome.zarr`/`.zarr`, `.tif`/`.tiff`/`.npy`/`.raw`, `.npz`, or `.h5`/`.nxs`."""
     p = Path(path)
     if p.is_dir() or p.name.lower().endswith((".ome.zarr", ".zarr")):
         vset = read_ome_zarr(p, as_set=True)
@@ -57,6 +57,18 @@ def load_bundle(path: Path | str) -> Dict[str, Any]:
         for unc_key, unc_vol in vset.uncertainties.items():
             bundle[unc_key] = np.asarray(unc_vol.data)
         return bundle
+
+    if p.suffix.lower() in (".tif", ".tiff", ".npy", ".raw"):
+        vol = read_volume(p)
+        vol_bundle: Dict[str, Any] = {}
+        if vol.is_calibrated:
+            vol_bundle["_calibrated_voxel_size_um"] = float(vol.spacing_in("um")[0])
+        if np.issubdtype(vol.dtype, np.integer):
+            vol_bundle["labels"] = np.asarray(vol.data)
+        else:
+            vol_bundle["pred"] = np.asarray(vol.data)
+            vol_bundle["recon"] = np.asarray(vol.data)
+        return vol_bundle
 
     if p.suffix.lower() == ".npz":
         with np.load(p, allow_pickle=False) as data:

@@ -3,11 +3,11 @@
 Every generated command matches the exact upstream CLI parsers verified against:
   - `BASE-Laboratory/OpenLSR-X` v0.2.2 (`src/openlsrx/cli.py` & `src/openlsrx/models/srgan.py`):
       * `openlsrx fit --config <yaml> --seed_everything <seed> --model.backbone {srgan,rrdb,swinir} ...`
-      * `openlsrx predict-volume --checkpoint <ckpt> --input <lr_tif> --output <pred_tif> --fusion confidence_fourier`
-      * `python evaluate.py --task t1 --prediction <pred_tif> --reference <ref_tif> --threshold-sensitivity ...`
+      * `openlsrx predict-volume --checkpoint <ckpt> --input <lr_tif> --output <pred.ome.zarr> --voxel-size-um <um> --fusion confidence_fourier`
+      * `python evaluate.py --task t1 --prediction <pred.ome.zarr> --reference <ref.ome.zarr> --threshold-sensitivity ...`
   - `BASE-Laboratory/X-FUSE` v1.0.0 (`x_fuse/cli.py`):
-      * `xfuse fuse --hr <hr_tif> --guide <zn_tif> <na_tif> --output <out.zarr> --conformal-alpha 0.10 ...`
-      * `xfuse fuse-3d --hr-volume <xct_h5> --guide-slice <z>:<path> ... --output <out_3d.zarr> --conformal-alpha 0.10`
+      * `xfuse fuse --hr <hr_tif> --guide <zn_tif> <na_tif> --output <out.ome.zarr> --conformal-alpha 0.10 ...`
+      * `xfuse fuse-3d --hr-volume <xct_h5> --guide-slice <z>:<path> ... --output <out_3d.ome.zarr> --conformal-alpha 0.10`
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ def build_openlsrx_commands(
         base_cfg = str(trk["openlsrx_base_config"])
         hr_vox = float(trk["ruby_calibrated_hr_voxel_um"])
         eval_lr_tif = f"{data_dir}/{tname}_real_paired_test_lr.tif"
-        eval_hr_tif = f"{data_dir}/{tname}_real_paired_test_hr.tif"
+        eval_hr_zarr = f"{data_dir}/{tname}_real_paired_test_hr.ome.zarr"
 
         for reg in regimes:
             rname = str(reg["name"])
@@ -73,8 +73,7 @@ def build_openlsrx_commands(
                 for seed in seeds:
                     run_dir = Path(out_root) / f"t1_{tname}_{rname}_{mname}_seed{seed}"
                     ckpt = f"{run_dir}/lightning_logs/version_0/checkpoints/last.ckpt"
-                    pred_tif = f"{run_dir}/pred_test.tiff"
-                    std_tif = f"{run_dir}/pred_test_sigma_ortho.tiff"
+                    pred_zarr = f"{run_dir}/pred_test.ome.zarr"
                     score_json = f"{run_dir}/zn13x_bench_t1_score.json"
 
                     fit_cmd = (
@@ -97,14 +96,14 @@ def build_openlsrx_commands(
                         f"openlsrx predict-volume "
                         f"--checkpoint {ckpt} "
                         f"--input {eval_lr_tif} "
-                        f"--output {pred_tif} "
-                        f"--uncertainty-output {std_tif} "
+                        f"--output {pred_zarr} "
+                        f"--voxel-size-um {hr_vox} "
                         f"--fusion confidence_fourier"
                     )
                     eval_cmd = (
                         f"python evaluate.py --task t1 "
-                        f"--prediction {pred_tif} "
-                        f"--reference {eval_hr_tif} "
+                        f"--prediction {pred_zarr} "
+                        f"--reference {eval_hr_zarr} "
                         f"--voxel-size-um {hr_vox} "
                         f"--threshold-sensitivity{mech_flag} "
                         f"--method {mname}_{rname} "

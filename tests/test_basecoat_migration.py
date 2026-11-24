@@ -389,3 +389,172 @@ def test_golden_thread_openimpala_and_sms_on_same_ome_zarr_bundle(
     assert 0.0 < m["e_eff_norm_ref"] < 1.0
     assert m["e_eff_rel_err"] < 0.25
     assert m["d_eff_rel_err"] < 0.25
+
+
+def test_savu_readers_and_tiff_bundle_delegate_cleanly_to_basecoat(tmp_path: Path) -> None:
+    import h5py
+    from basecoat import Volume, read_savu_subvolume, write_volume
+    from multimodal_benchmark.evaluator import evaluate_bundles, load_bundle
+    from multimodal_benchmark.io import get_xct_shape_and_dtype, load_xct_subvolume
+    from registration.diad_correlative import read_savu_or_zyx_slab
+
+    savu_h5 = tmp_path / "savu_recon.h5"
+    raw_xzy = np.arange(16 * 12 * 16, dtype=np.float32).reshape(16, 12, 16)
+    with h5py.File(savu_h5, "w") as fh:
+        fh.create_dataset("4-TomopyRecon-tomo/data", data=raw_xzy)
+
+    shp, dt, ds_name = get_xct_shape_and_dtype(savu_h5)
+    assert shp == (12, 16, 16)
+    assert dt == np.float32
+    assert ds_name == "4-TomopyRecon-tomo/data"
+
+    sub_io = load_xct_subvolume(
+        savu_h5, zyx_slices=(slice(2, 10, 2), slice(0, 16, 2), slice(0, 16, 2)), flip_x=True
+    )
+    sub_bc = read_savu_subvolume(
+        savu_h5, zyx_slices=(slice(2, 10, 2), slice(0, 16, 2), slice(0, 16, 2)), flip_x=True, dtype=np.float32
+    )
+    np.testing.assert_allclose(sub_io, sub_bc.data)
+
+    slab_dc, full_zyx, slab_ds = read_savu_or_zyx_slab(savu_h5, z0=2, z1=10, z_stride=2, yx_stride=2)
+    sub_bc_noflip = read_savu_subvolume(
+        savu_h5, zyx_slices=(slice(2, 10, 2), slice(None, None, 2), slice(None, None, 2)), dtype=np.float32
+    )
+    assert full_zyx == (12, 16, 16)
+    assert slab_ds == "4-TomopyRecon-tomo/data"
+    np.testing.assert_allclose(slab_dc, sub_bc_noflip.data)
+
+    # Verify standalone .tif/.tiff/.npy bundles load through basecoat.read_volume instead of h5py
+    ref_tif = tmp_path / "ref_pred.tif"
+    pred_tif = tmp_path / "cand_pred.tiff"
+    ref_arr = (40.0 + 10.0 * np.sin(np.linspace(0.0, 3.0, 16 * 16 * 16)).reshape(16, 16, 16)).astype(np.float32)
+    write_volume(Volume.from_array(ref_arr, voxel_size_um=0.8006), ref_tif)
+    write_volume(Volume.from_array(ref_arr + 0.25, voxel_size_um=0.8006), pred_tif)
+
+    b_ref = load_bundle(ref_tif)
+    b_pred = load_bundle(pred_tif)
+    assert np.isclose(b_ref["_calibrated_voxel_size_um"], 0.8006)
+    scored = evaluate_bundles("t1", b_pred, b_ref, with_transport=False, bootstrap_samples=0)
+    assert scored["metrics"]["psnr_db"] > 35.0
+
+
+def test_all_pipeline_clis_exist_and_prepare_baseline_inputs_end_to_end(tmp_path: Path) -> None:
+    import subprocess
+    import sys
+
+    from multimodal_benchmark.evaluator import evaluate_bundles, load_bundle
+    from preprocessing.extract_benchmark_tracks import extract_paired_subvolume_tracks
+    from preprocessing.prepare_baseline_inputs import prepare_t1_baseline_inputs
+
+    repo_root = Path(__file__).resolve().parents[1]
+    cli_modules = [
+        ["-m", "registration.diad_stage_z_audit", "--help"],
+        ["-m", "registration.diad_correlative", "--help"],
+        ["-m", "registration.cross_beamline_audit", "--help"],
+        ["-m", "registration.i13_ladder", "--help"],
+        ["-m", "preprocessing.extract_benchmark_tracks", "--help"],
+        ["-m", "preprocessing.prepare_baseline_inputs", "--help"],
+        ["-m", "baselines.learned", "--help"],
+        ["evaluate.py", "--help"],
+    ]
+    for args in cli_modules:
+        proc = subprocess.run(
+            [sys.executable, *args],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 0, f"CLI {' '.join(args)} failed: {proc.stderr}"
+
+    # End-to-end synthetic T1 track extraction -> prepare_baseline_inputs -> OME-Zarr contract evaluation
+    rng = np.random.default_rng(11)
+    hr = (60.0 + 12.0 * rng.random((24, 24, 24))).astype(np.float32)
+    lr = hr[::2, ::2, ::2].copy()
+    tracks_h5 = tmp_path / "t1_2p026x_tracks.h5"
+    extract_paired_subvolume_tracks(
+        lr_zyx=lr,
+        hr_zyx=hr,
+        lr_nominal_voxel_um=1.625,
+        hr_nominal_voxel_um=0.8125,
+        ruby_calibrated_hr_voxel_um=0.8006,
+        track_name="2p026x",
+        out_h5_path=tracks_h5,
+    )
+
+    prep_dir = tmp_path / "zn13x_float32"
+    prep = prepare_t1_baseline_inputs(
+        extracted_h5=tracks_h5,
+        out_dir=prep_dir,
+        track="2p026x",
+        ruby_calibrated_hr_voxel_um=0.8006,
+    )
+    for rname in ("synthetic_clean", "synthetic_noisy", "synthetic_jittered", "real_paired"):
+        assert (prep_dir / f"2p026x_{rname}_train_lr.tif").is_file()
+        assert (prep_dir / f"2p026x_{rname}_train_hr.tif").is_file()
+    assert (prep_dir / "2p026x_real_paired_test_lr.tif").is_file()
+    ref_zarr = Path(prep["files"]["real_paired_test_hr_ome_zarr"])
+    assert ref_zarr.is_dir()
+
+    ref_b = load_bundle(ref_zarr)
+    assert ref_b["track"] == "raw_float32"
+    assert np.isclose(ref_b["_calibrated_voxel_size_um"], 0.8006)
+    res = evaluate_bundles("t1", ref_b, ref_b, with_transport=False, bootstrap_samples=0)
+    assert res["metrics"]["psnr_db"] >= 80.0
+
+    # End-to-end synthetic T2 LOSO baseline input preparation -> OME-Zarr reference evaluation
+    import h5py
+    from preprocessing.prepare_baseline_inputs import prepare_t2_baseline_inputs
+    from registration.i13_ladder import refit_i13_ladder_float32
+
+    xrd_dir = tmp_path / "xrdct_mock"
+    xrd_dir.mkdir()
+    scan_50_ids = list(range(43336, 43348)) + list(range(43393, 43401))
+    for sid in scan_50_ids:
+        for ph, qv in (("na", "1.651"), ("zn", "1.656")):
+            with h5py.File(xrd_dir / f"output_{sid}_{ph}.nxs", "w") as fh:
+                fh.create_dataset(f"entry/peak at q~{qv}", data=rng.uniform(0.1, 2.0, size=(20, 20)).astype(np.float32))
+    for sid in (43322, 43323, 43324, 43325):
+        for ph, qv in (("na", "1.651"), ("zn", "1.656")):
+            with h5py.File(xrd_dir / f"output_{sid}_{ph}.nxs", "w") as fh:
+                fh.create_dataset(f"entry/peak at q~{qv}", data=rng.uniform(0.1, 2.0, size=(40, 40)).astype(np.float32))
+
+    diad_h5 = tmp_path / "mock_diad_xct.h5"
+    with h5py.File(diad_h5, "w") as fh:
+        fh.create_dataset("4-AstraReconGpu-tomo/data", data=rng.uniform(10.0, 50.0, size=(16, 24, 16)).astype(np.float32))
+
+    t2_out = tmp_path / "zn13x_t2_diad"
+    t2_rep = prepare_t2_baseline_inputs(xrdct_dir=xrd_dir, out_dir=t2_out, diad_xct_h5=diad_h5)
+    assert t2_rep["num_written"] > 10
+    assert (t2_out / "ref_25um_43322.ome.zarr").is_dir()
+    assert (t2_out / "xct_slab_z14_43322.tif").is_file()
+    assert (t2_out / "diad_xct_subvolume.h5").is_file()
+    t2_ref_b = load_bundle(t2_out / "ref_25um_43322.ome.zarr")
+    t2_score = evaluate_bundles("t2", t2_ref_b, t2_ref_b, bootstrap_samples=0)
+    assert t2_score["metrics"]["mean_bandlimited_rmse"] < 1e-6
+
+    # Synthetic 4-scan I13-2 Savu HDF5 refit smoke test (`registration.i13_ladder`)
+    i13_dir = tmp_path / "i13_savu_mock"
+    i13_dir.mkdir()
+    zz, yy, xx = np.indices((16, 20, 20), dtype=np.float32)
+    blob = (30.0 + 40.0 * np.exp(-0.5 * ((zz - 8.0) ** 2 + (yy - 10.0) ** 2 + (xx - 10.0) ** 2) / 9.0)).astype(
+        np.float32
+    )
+    for sid in ("169068", "169067", "169066", "169065"):
+        with h5py.File(i13_dir / f"{sid}_tomo_p4_tomopy_recon.h5", "w") as fh:
+            # Savu (X, Z, Y) layout -> (20, 16, 20)
+            fh.create_dataset("4-TomopyRecon-tomo/data", data=np.transpose(blob, (2, 0, 1)))
+    cert_yaml = tmp_path / "certified.yaml"
+    refit = refit_i13_ladder_float32(
+        h5_dir=i13_dir,
+        out_json=tmp_path / "refitted.json",
+        out_certified_yaml=cert_yaml,
+        z0=0,
+        z1=16,
+        stride=1,
+        max_iterations=8,
+    )
+    assert set(refit["tracks"].keys()) == {"1p604x", "2p026x", "2p493x", "5p051x", "8p101x"}
+    assert cert_yaml.is_file()
+
+

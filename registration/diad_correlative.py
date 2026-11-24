@@ -239,46 +239,17 @@ def read_savu_or_zyx_slab(
     yx_stride: int = 1,
     dataset_path: Optional[str] = None,
 ) -> Tuple[np.ndarray, Tuple[int, int, int], str]:
-    """Read a memory-safe (Z, Y, X) slab from either a Savu recon HDF5 (axis 1 = vertical Z) or standard (Z, Y, X) HDF5."""
-    candidates = (
-        [dataset_path]
-        if dataset_path is not None
-        else [
-            "4-AstraReconGpu-tomo/data",
-            "4-TomopyRecon-tomo/data",
-            "entry/final_result_tomo/data",
-            "data",
-        ]
-    )
-    with h5py.File(h5_path, "r") as fh:
-        ds_name: Optional[str] = None
-        for cand in candidates:
-            if cand and cand in fh and isinstance(fh[cand], h5py.Dataset):
-                ds_name = cand
-                break
-        if ds_name is None:
-            found: List[str] = []
-            fh.visititems(
-                lambda k, o: found.append(k) if isinstance(o, h5py.Dataset) and o.ndim == 3 else None
-            )
-            if not found:
-                raise KeyError(f"No 3D dataset found in {h5_path}")
-            ds_name = found[0]
+    """Read a memory-safe `(Z, Y, X)` slab out-of-core via `basecoat.open_savu_h5`."""
+    from basecoat import open_savu_h5
 
-        ds = fh[ds_name]
-        s0, s1, s2 = [int(v) for v in ds.shape]
-        is_savu_xzy = ("AstraRecon" in ds_name) or ("TomopyRecon" in ds_name) or (s1 < s0 and s0 == s2)
-        if is_savu_xzy:
-            full_zyx = (s1, s2, s0)
-            z_end = full_zyx[0] if z1 is None else min(full_zyx[0], int(z1))
-            raw = np.asarray(ds[::yx_stride, z0:z_end:z_stride, ::yx_stride], dtype=np.float32)
-            vol_zyx = np.transpose(raw, (1, 2, 0)).copy()
-        else:
-            full_zyx = (s0, s1, s2)
-            z_end = full_zyx[0] if z1 is None else min(full_zyx[0], int(z1))
-            vol_zyx = np.asarray(ds[z0:z_end:z_stride, ::yx_stride, ::yx_stride], dtype=np.float32)
-
-    return vol_zyx, full_zyx, ds_name
+    with open_savu_h5(h5_path, dataset_path=dataset_path) as lv:
+        full_zyx = (int(lv.shape[0]), int(lv.shape[1]), int(lv.shape[2]))
+        ds_name = str(lv.provenance["dataset_path"])
+        z_end = full_zyx[0] if z1 is None else min(full_zyx[0], int(z1))
+        vol = lv.read_region(
+            (slice(z0, z_end, z_stride), slice(None, None, yx_stride), slice(None, None, yx_stride))
+        )
+    return np.asarray(vol.data, dtype=np.float32), full_zyx, ds_name
 
 
 def read_dls_k11_raw_stage_z(
