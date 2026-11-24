@@ -88,4 +88,14 @@ addopts = "-q"
 
 [tool.basecoat.layers]
 layer = 4
-banned_imports = []
+source_dirs = [
+  "src",
+  "registration",
+  "preprocessing",
+  "tasks",
+  "splits",
+  "baselines",
+  "release_packaging",
+  "scripts",
+]
+banned_imports = ["zarr", "numcodecs"]

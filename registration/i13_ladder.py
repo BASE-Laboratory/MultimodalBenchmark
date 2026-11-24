@@ -620,3 +620,185 @@ def read_i13_nexus_stage_metadata(nexus_path: Path | str) -> Dict[str, Any]:
                 out[key] = val
     return out
 
+
+def refit_i13_ladder_float32(
+    h5_dir: Path | str,
+    out_json: Path | str,
+    out_certified_yaml: Optional[Path | str] = None,
+    z0: int = 640,
+    z1: int = 1280,
+    stride: int = 4,
+    valid_radius_fraction: float = 0.82,
+    max_iterations: int = 120,
+) -> Dict[str, Any]:
+    """Stream-refit I13-2 7-DOF similarity transforms directly on 32-bit float Savu HDF5 reconstructions."""
+    from basecoat import read_savu_subvolume
+
+    hdir = Path(h5_dir)
+    scan_specs: Dict[str, Tuple[float, float]] = {
+        "169068": (2.6000, 2.5945),
+        "169067": (1.6250, 1.6212),
+        "169066": (0.8125, 0.8006),
+        "169065": (0.3250, 0.3211),
+    }
+
+    def _resolve_scan_h5(scan_id: str) -> Path:
+        for pat in (
+            f"{scan_id}_tomo_p4_tomopy_recon.h5",
+            f"{scan_id}_recon.h5",
+            f"{scan_id}.h5",
+        ):
+            cand = hdir / pat
+            if cand.is_file():
+                return cand
+        raise FileNotFoundError(f"Could not find 32-bit float HDF5 for I13-2 scan {scan_id} inside {hdir}")
+
+    loaded: Dict[str, Tuple[np.ndarray, Tuple[float, float, float], Tuple[float, float, float]]] = {}
+    ref_hr_nom = 0.8125
+    for sid, (nom_um, _cal_um) in scan_specs.items():
+        p = _resolve_scan_h5(sid)
+        z_lo = max(0, int(round(z0 * ref_hr_nom / nom_um)))
+        z_hi = max(z_lo + 8, int(round(z1 * ref_hr_nom / nom_um)))
+        vol = read_savu_subvolume(
+            p,
+            zyx_slices=(slice(z_lo, z_hi), slice(None), slice(None)),
+            stride=stride,
+            voxel_size_um=nom_um,
+            origin_um=(z_lo * nom_um, 0.0, 0.0),
+            space=f"i13_{sid}",
+            dtype=np.float32,
+        )
+        sp_um = vol.spacing_in("um")
+        orig_um = vol.origin_in("um")
+        loaded[sid] = (
+            np.asarray(vol.data, dtype=np.float32),
+            (float(sp_um[0]), float(sp_um[1]), float(sp_um[2])),
+            (float(orig_um[0]), float(orig_um[1]), float(orig_um[2])),
+        )
+
+    pair_defs = [
+        ("1p604x", "169068", "169067", 1.6),
+        ("2p026x", "169067", "169066", 2.0),
+        ("2p493x", "169066", "169065", 2.5),
+        ("5p051x", "169067", "169065", 5.0),
+    ]
+    tracks_out: Dict[str, Any] = {}
+    bc_rungs: Dict[str, BasecoatSimilarityTransform3D] = {}
+
+    for tname, lr_id, hr_id, nom_ratio in pair_defs:
+        lr_arr, lr_sp, lr_orig = loaded[lr_id]
+        hr_arr, hr_sp, hr_orig = loaded[hr_id]
+        hr_mask = radial_non_cupping_mask(hr_arr.shape, valid_radius_fraction=valid_radius_fraction).astype(np.uint8)
+        lr_mask = radial_non_cupping_mask(lr_arr.shape, valid_radius_fraction=valid_radius_fraction).astype(np.uint8)
+        fit_res = register_3d_similarity(
+            fixed_zyx=hr_arr,
+            moving_zyx=lr_arr,
+            fixed_spacing_zyx_um=hr_sp,
+            moving_spacing_zyx_um=lr_sp,
+            fixed_mask_zyx=hr_mask,
+            moving_mask_zyx=lr_mask,
+            fixed_origin_zyx_um=hr_orig,
+            moving_origin_zyx_um=lr_orig,
+            max_iterations=max_iterations,
+            shrink_factors=(2, 1),
+            smoothing_sigmas=(1.0, 0.0),
+        )
+        bc_tx = fit_res.transform.to_basecoat(from_space=f"i13_{hr_id}", to_space=f"i13_{lr_id}")
+        bc_rungs[tname] = bc_tx
+        true_mag = float(nom_ratio) / max(float(fit_res.transform.scale), 1e-12)
+        tracks_out[tname] = {
+            "lr_scan": lr_id,
+            "hr_scan": hr_id,
+            "nominal_ratio": nom_ratio,
+            "true_magnification_ratio": round(true_mag, 5),
+            "fitted_scale_factor_lr_over_hr_nom": round(float(fit_res.transform.scale), 6),
+            "similarity_transform_hr_to_lr": asdict(fit_res.transform),
+            "tre_mean_um": fit_res.tre_mean_um,
+            "tre_median_um": fit_res.tre_median_um,
+            "tre_p95_um": fit_res.tre_p95_um,
+            "num_matched_landmarks": fit_res.num_matched_landmarks,
+        }
+
+    # Chain 8p101x (i13_169065 -> i13_169066 -> i13_169067 -> i13_169068) via basecoat .then_similarity()
+    bc_65_to_68 = bc_rungs["2p493x"].then_similarity(bc_rungs["2p026x"]).then_similarity(bc_rungs["1p604x"])
+    dto_8x = SimilarityTransform3D.from_basecoat(bc_65_to_68)
+    tracks_out["8p101x"] = {
+        "exploratory": True,
+        "chained_from": ["2p493x", "2p026x", "1p604x"],
+        "lr_scan": "169068",
+        "hr_scan": "169065",
+        "nominal_ratio": 8.0,
+        "true_magnification_ratio": round(8.0 / max(float(dto_8x.scale), 1e-12), 5),
+        "fitted_scale_factor_lr_over_hr_nom": round(float(dto_8x.scale), 6),
+        "similarity_transform_hr_to_lr": asdict(dto_8x),
+    }
+
+    payload: Dict[str, Any] = {
+        "schema_version": "2.1.0",
+        "status": "refitted_on_32bit_float32_savu_volumes",
+        "z_window_ref_0p8125um": [int(z0), int(z1)],
+        "stream_stride": int(stride),
+        "valid_radius_fraction": float(valid_radius_fraction),
+        "tracks": tracks_out,
+    }
+    out_p = Path(out_json)
+    out_p.parent.mkdir(parents=True, exist_ok=True)
+    out_p.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    if out_certified_yaml is not None:
+        import yaml
+
+        ypath = Path(out_certified_yaml)
+        ypath.parent.mkdir(parents=True, exist_ok=True)
+        existing: Dict[str, Any] = {}
+        if ypath.is_file():
+            existing = yaml.safe_load(ypath.read_text(encoding="utf-8")) or {}
+        existing["float32_savu_refit"] = payload
+        ypath.write_text(yaml.safe_dump(existing, sort_keys=False), encoding="utf-8")
+
+    return payload
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Stage 0B: Refit 7-DOF I13-2 multi-magnification similarity transforms on 32-bit float Savu HDF5s."
+    )
+    parser.add_argument("--h5-dir", type=Path, required=True, help="Directory containing 169065..169068 Savu HDF5 files.")
+    parser.add_argument(
+        "--out-json",
+        type=Path,
+        default=Path("outputs/i13_float32_refitted_transforms.json"),
+        help="Output JSON path for refitted 32-bit 7-DOF transforms.",
+    )
+    parser.add_argument(
+        "--out-certified-yaml",
+        type=Path,
+        default=None,
+        help="Optional certified_regions YAML path to update with `float32_savu_refit` section.",
+    )
+    parser.add_argument("--z0", type=int, default=640, help="Clean slab start z-index in 169066 (0.8125 um) coordinates.")
+    parser.add_argument("--z1", type=int, default=1280, help="Clean slab stop z-index in 169066 (0.8125 um) coordinates.")
+    parser.add_argument("--stride", type=int, default=4, help="Out-of-core spatial stride for multi-resolution fitting.")
+    parser.add_argument("--valid-radius-fraction", type=float, default=0.82)
+    parser.add_argument("--max-iterations", type=int, default=120)
+    args = parser.parse_args(argv)
+
+    summary = refit_i13_ladder_float32(
+        h5_dir=args.h5_dir,
+        out_json=args.out_json,
+        out_certified_yaml=args.out_certified_yaml,
+        z0=args.z0,
+        z1=args.z1,
+        stride=args.stride,
+        valid_radius_fraction=args.valid_radius_fraction,
+        max_iterations=args.max_iterations,
+    )
+    print(json.dumps(summary, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+

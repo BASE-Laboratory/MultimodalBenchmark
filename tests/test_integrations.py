@@ -121,6 +121,9 @@ def test_learned_cli_commands_match_upstream_openlsrx_and_xfuse_parsers(tmp_path
         assert "train_and_predict" not in c
         assert "openlsrx fit --config" in c
         assert "openlsrx predict-volume" in c
+        assert "pred_test.ome.zarr" in c
+        assert "--voxel-size-um 0.8006" in c
+        assert "real_paired_test_hr.ome.zarr" in c
         assert any(f"--model.backbone {b}" in c for b in ("srgan", "rrdb", "swinir"))
 
     t1_cmds_all = build_openlsrx_commands(

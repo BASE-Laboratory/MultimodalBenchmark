@@ -8,14 +8,10 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import h5py
 import numpy as np
+from basecoat import open_savu_h5, read_savu_subvolume
+from basecoat.io.savu import SAVU_DATASET_CANDIDATES, find_savu_dataset_path, is_savu_xzy_layout
 
-XCT_DATASET_CANDIDATES: Tuple[str, ...] = (
-    "4-TomopyRecon-tomo/data",
-    "4-AstraReconGpu-tomo/data",
-    "entry/final_result_tomo/data",
-    "data",
-    "volume",
-)
+XCT_DATASET_CANDIDATES: Tuple[str, ...] = SAVU_DATASET_CANDIDATES
 
 
 @dataclass(frozen=True)
@@ -77,30 +73,12 @@ def load_ascii_xrd(path: Path | str, wavelength_angstrom: float = 1.54059) -> Po
 
 
 def find_xct_dataset_path(h5_file: h5py.File) -> str:
-    """Locate the primary 3D XCT dataset inside a Savu TomoPy, Astra, or cropped HDF5 file."""
-    for candidate in XCT_DATASET_CANDIDATES:
-        if candidate in h5_file and isinstance(h5_file[candidate], h5py.Dataset):
-            return candidate
-
-    found: Optional[str] = None
-
-    def _visitor(name: str, obj: object) -> None:
-        nonlocal found
-        if found is None and isinstance(obj, h5py.Dataset) and obj.ndim == 3:
-            found = name
-
-    h5_file.visititems(_visitor)
-    if found is None:
-        raise KeyError("No 3D tomography dataset found in HDF5 file.")
-    return found
+    """Locate the primary 3D XCT dataset inside a Savu TomoPy, Astra, or cropped HDF5 file via `basecoat`."""
+    return find_savu_dataset_path(h5_file)
 
 
 def _is_savu_xzy_layout(ds_name: str, shape: Tuple[int, ...]) -> bool:
-    if len(shape) != 3:
-        return False
-    if any(tag in ds_name for tag in ("TomopyRecon", "AstraRecon")):
-        return shape[0] == shape[2] and shape[1] != shape[0]
-    return shape in ((2510, 2110, 2510), (2560, 2160, 2560))
+    return is_savu_xzy_layout(ds_name, shape)
 
 
 def get_xct_shape_and_dtype(
@@ -108,14 +86,11 @@ def get_xct_shape_and_dtype(
     dataset_path: Optional[str] = None,
     canonical_zyx: bool = True,
 ) -> Tuple[Tuple[int, int, int], np.dtype, str]:
-    with h5py.File(path, "r") as h5f:
-        ds_name = dataset_path or find_xct_dataset_path(h5f)
-        ds = h5f[ds_name]
-        raw_shape = tuple(int(s) for s in ds.shape)
-        if canonical_zyx and _is_savu_xzy_layout(ds_name, raw_shape):
-            # Savu stores (X, Z_vertical, Y) -> canonical (Z, Y, X) is (shape[1], shape[2], shape[0])
-            raw_shape = (raw_shape[1], raw_shape[2], raw_shape[0])
-        return raw_shape, ds.dtype, ds_name
+    """Inspect canonical `(Z, Y, X)` (or raw on-disk) shape, dtype, and dataset path via `basecoat.open_savu_h5`."""
+    savu_xzy: Optional[bool] = None if canonical_zyx else False
+    with open_savu_h5(path, dataset_path=dataset_path, savu_xzy=savu_xzy) as lv:
+        ds_name = str(lv.provenance["dataset_path"])
+        return (int(lv.shape[0]), int(lv.shape[1]), int(lv.shape[2])), lv.dtype, ds_name
 
 
 def load_xct_subvolume(
@@ -127,31 +102,18 @@ def load_xct_subvolume(
     dtype: Optional[np.dtype] = np.float32,
     canonical_zyx: bool = True,
 ) -> np.ndarray:
-    """Load a 3D XCT sub-volume out-of-core in canonical (Z, Y, X) order without reading the full >50 GB array."""
-    with h5py.File(path, "r") as h5f:
-        ds_name = dataset_path or find_xct_dataset_path(h5f)
-        ds = h5f[ds_name]
-        is_xzy = canonical_zyx and _is_savu_xzy_layout(ds_name, tuple(int(s) for s in ds.shape))
-        if zyx_slices is None:
-            sl_zyx = (slice(None, None, stride), slice(None, None, stride), slice(None, None, stride))
-        else:
-            sz, sy, sx = zyx_slices
-            sl_zyx = (
-                slice(sz.start, sz.stop, sz.step or stride),
-                slice(sy.start, sy.stop, sy.step or stride),
-                slice(sx.start, sx.stop, sx.step or stride),
-            )
-        if is_xzy:
-            # Disk layout is (X, Z, Y); slice out-of-core then transpose (1, 2, 0) -> (Z, Y, X)
-            raw_sl = (sl_zyx[2], sl_zyx[0], sl_zyx[1])
-            arr = np.transpose(np.asarray(ds[raw_sl]), (1, 2, 0))
-        else:
-            arr = np.asarray(ds[sl_zyx])
-    if flip_x:
-        arr = np.flip(arr, axis=2).copy()
-    if dtype is not None and arr.dtype != dtype:
-        arr = arr.astype(dtype, copy=False)
-    return arr
+    """Load a 3D XCT sub-volume out-of-core in canonical `(Z, Y, X)` order via `basecoat.read_savu_subvolume`."""
+    savu_xzy: Optional[bool] = None if canonical_zyx else False
+    vol = read_savu_subvolume(
+        path,
+        zyx_slices=zyx_slices,
+        stride=stride,
+        flip_x=flip_x,
+        dataset_path=dataset_path,
+        savu_xzy=savu_xzy,
+        dtype=dtype,
+    )
+    return vol.data
 
 
 def load_xrdct_sinogram(

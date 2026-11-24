@@ -120,8 +120,8 @@ python -m registration.cross_beamline_audit \
 # Generate deterministic 3D splits with >=32 um spatial & >=100 um axial z-guard bands
 python -m splits.generate_splits --out splits/benchmark_splits_v1.json
 
-# Evaluate any baseline or model submission into JSON + Markdown leaderboard rows
-python evaluate.py --task t3 --prediction outputs/jbu_pred.npz --reference outputs/t3_ref.npz --markdown
+# Evaluate any baseline or model submission (.ome.zarr, .tiff, .npz, or .h5) into JSON + Markdown rows
+python evaluate.py --task t2 --prediction outputs/xfuse_pred_43322.ome.zarr --reference data/benchmarks/zn13x_t2_diad/ref_25um_43322.ome.zarr --markdown
 ```
 
 ---
