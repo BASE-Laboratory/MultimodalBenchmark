@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 import numpy as np
 from skimage.filters import threshold_otsu
@@ -52,8 +52,7 @@ def compute_openimpala_transport_metrics(
 
     data = np.asarray(binary_pore_zyx, dtype=np.uint8)
     solid_phase_id = 0 if pore_phase_id == 1 else 1
-    use_vol_proto = hasattr(oi, "VolumeProtocol")
-    vol_in: Any = Volume.from_array(data, voxel_size_um=float(voxel_size_m) * 1e6) if use_vol_proto else data
+    vol_in = Volume.from_array(data, voxel_size_um=float(voxel_size_m) * 1e6)
 
     with oi.Session():
         vf_res = oi.volume_fraction(vol_in, phase=pore_phase_id)
@@ -67,11 +66,7 @@ def compute_openimpala_transport_metrics(
             perc[axis] = bool(pc.percolates)
             if pc.percolates:
                 try:
-                    t_res = (
-                        oi.tortuosity(vol_in, phase=pore_phase_id, direction=axis)
-                        if use_vol_proto
-                        else oi.tortuosity(data, phase=pore_phase_id, direction=axis, voxel_size=voxel_size_m)
-                    )
+                    t_res = oi.tortuosity(vol_in, phase=pore_phase_id, direction=axis)
                     taus[axis] = float(t_res.tortuosity)
                     deffs[axis] = float(t_res.effective_diffusivity)
                 except Exception:
@@ -82,17 +77,7 @@ def compute_openimpala_transport_metrics(
                 deffs[axis] = 0.0
 
         dxx, dyy, dzz = deffs["x"], deffs["y"], deffs["z"]
-
-        ssa_res = (
-            oi.specific_surface_area(vol_in, phase_a=pore_phase_id, phase_b=solid_phase_id)
-            if use_vol_proto
-            else oi.specific_surface_area(
-                data,
-                phase_a=pore_phase_id,
-                phase_b=solid_phase_id,
-                voxel_size=voxel_size_m,
-            )
-        )
+        ssa_res = oi.specific_surface_area(vol_in, phase_a=pore_phase_id, phase_b=solid_phase_id)
 
     finite_taus = [v for v in taus.values() if np.isfinite(v) and v > 0]
     mean_tau = float(np.mean(finite_taus)) if finite_taus else float("inf")
