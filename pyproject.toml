@@ -51,7 +51,7 @@ registration = [
   "matplotlib>=3.7",
 ]
 transport = [
-  "openimpala>=4.6.0,<6.0.0",
+  "openimpala>=5.1.0,<6.0.0",
 ]
 # Note: structural_mechanics_solver (sms) is currently a private BASE-Laboratory repository;
 # install from a local or authenticated checkout (`pip install -e ../structural_mechanics_solver`)
@@ -64,7 +64,7 @@ dev = [
   "pytest>=7.4",
   "SimpleITK>=2.3",
   "matplotlib>=3.7",
-  "openimpala>=4.6.0,<6.0.0",
+  "openimpala>=5.1.0,<6.0.0",
 ]
 
 [project.scripts]
